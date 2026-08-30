@@ -1,0 +1,39 @@
+{
+  "name": "agent-arena-core",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsc -b",
+    "check": "tsx scripts/harness/run-gates.ts all",
+    "check:static": "tsx scripts/harness/run-gates.ts static",
+    "check:architecture": "tsx scripts/harness/check-architecture.ts",
+    "format": "oxfmt --write .",
+    "format:check": "oxfmt --check .",
+    "hygiene": "knip --reporter compact",
+    "lint": "oxlint --type-aware --deny-warnings .",
+    "test": "vitest run --config vitest.config.ts",
+    "test:coverage": "vitest run --coverage --config vitest.config.ts",
+    "typecheck": "tsc -b --pretty false && tsc -p tsconfig.tests.json --pretty false"
+  },
+  "devDependencies": {
+    "@types/node": "24.10.1",
+    "@vitest/coverage-v8": "4.1.11",
+    "knip": "6.32.2",
+    "oxfmt": "0.32.0",
+    "oxlint": "1.79.0",
+    "oxlint-tsgolint": "7.0.2001",
+    "tsx": "4.23.12",
+    "typescript": "7.0.2",
+    "vitest": "4.1.11"
+  },
+  "engines": {
+    "node": ">=24.0.0"
+  },
+  "packageManager": "pnpm@10.20.0",
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild"
+    ]
+  }
+}

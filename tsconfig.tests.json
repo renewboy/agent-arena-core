@@ -1,0 +1,23 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "composite": false,
+    "declaration": false,
+    "declarationMap": false,
+    "noEmit": true,
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "paths": {
+      "@agent-arena/contracts": ["./packages/contracts/src/index.ts"],
+      "@agent-arena/ruleset": ["./packages/ruleset/src/index.ts"],
+      "@agent-arena/game-runtime": ["./packages/game-runtime/src/index.ts"]
+    },
+    "types": ["node", "vitest/globals"]
+  },
+  "include": [
+    "packages/*/tests/**/*.ts",
+    "examples/*/tests/**/*.ts",
+    "scripts/**/*.ts",
+    "vitest.config.ts"
+  ]
+}

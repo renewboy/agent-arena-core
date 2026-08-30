@@ -1,0 +1,16 @@
+{
+  "name": "@agent-arena/example-hidden-team",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsc -b",
+    "typecheck": "tsc -b --pretty false"
+  },
+  "dependencies": {
+    "@agent-arena/contracts": "workspace:*",
+    "@agent-arena/game-runtime": "workspace:*",
+    "@agent-arena/ruleset": "workspace:*",
+    "zod": "4.4.3"
+  }
+}
