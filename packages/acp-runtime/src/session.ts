@@ -24,6 +24,7 @@ export interface AcpSessionStartOptions {
   readonly cwd: string
   readonly launch: ProcessLaunchSpec
   readonly clientInfo?: { readonly name: string; readonly version: string }
+  readonly sessionLabel?: string
   readonly model?: string
   readonly modelConfigKey?: string
   readonly reasoningEffort?: string
@@ -181,9 +182,11 @@ export class AcpSession {
     } catch (error) {
       await process.close()
       const detail = error instanceof Error ? error.message : String(error)
-      throw new AcpLifecycleError(`Unable to start ACP session: ${detail}`, process.stderrTail, {
-        cause: error,
-      })
+      throw new AcpLifecycleError(
+        `Unable to start ${options.sessionLabel ?? 'ACP session'}: ${detail}`,
+        process.stderrTail,
+        { cause: error },
+      )
     }
   }
 
