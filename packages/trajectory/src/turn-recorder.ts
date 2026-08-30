@@ -273,9 +273,17 @@ export class TrajectoryTurnRecorder<
   }
 }
 
-interface SanitizedValue {
+export interface SanitizedValue {
   readonly value: string
   readonly truncated: boolean
+}
+
+export function serializeTrajectoryValue(value: unknown): SanitizedValue {
+  return safeJson(value)
+}
+
+export function trajectoryElapsed(start: string, end: string): number {
+  return elapsed(start, end)
 }
 
 function safeJson(value: unknown): SanitizedValue {
