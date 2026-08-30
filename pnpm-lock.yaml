@@ -105,6 +105,18 @@ importers:
         specifier: 4.4.3
         version: 4.4.3
 
+  packages/trajectory:
+    dependencies:
+      '@agent-arena/contracts':
+        specifier: workspace:*
+        version: link:../contracts
+      '@agentclientprotocol/sdk':
+        specifier: 1.4.0
+        version: 1.4.0(zod@4.4.3)
+      zod:
+        specifier: 4.4.3
+        version: 4.4.3
+
 packages:
 
   '@agentclientprotocol/sdk@1.4.0':

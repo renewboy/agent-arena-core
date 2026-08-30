@@ -11,6 +11,7 @@ Agent Arena Core 是面向多 Agent 回合制游戏的 Ruleset-first 基础框�
   agenda。
 - `@agent-arena/game-runtime`：GameModule、decision boundary、事件 journal 与确定性随机源。
 - `@agent-arena/simulation`：candidate、双 runner 评审、approved fixture 与 canonical helpers。
+- `@agent-arena/trajectory`：ACP Turn/Record 合并、脱敏、截断与持久化 callbacks。
 - `examples/hidden-team`：验证团队私有事实、文字行动与 barrier。
 - `examples/reaction-card`：验证牌堆、连续行动、响应窗口与 restore。
 

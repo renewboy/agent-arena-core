@@ -14,6 +14,7 @@ game runtime 还是游戏模块拥有。精确字段和失败行为由各 packag
 - audience 在事件产生时声明，observation 从授权后的事件与状态构造；
 - 一个逻辑 ACP Session 可以由新进程按精确 Session ID 恢复；
 - Prompt delivery 在 acknowledgement 前保持显式 in-flight 或 uncertain 状态；
+- ACP Turn 的 Prompt、stream、tool、permission、usage 与 diagnostics 在持久化前统一脱敏和截断；
 - 规则组合算法不要求共享具体游戏的 state、action payload、event payload 或 outcome；
 - 通用抽象由两种控制流不同的 conformance games 共同验证。
 
@@ -28,6 +29,7 @@ flowchart TB
     Ruleset["ruleset<br/>plugin 编译、ownership、graph、query、resolution"]
     Runtime["game-runtime<br/>GameModule、decision、journal、deterministic"]
     Simulation["simulation<br/>candidate、双 runner、fixture"]
+    Trajectory["trajectory<br/>Turn、Record、redaction"]
     Hidden["hidden-team<br/>group privacy 与 barrier"]
     Card["reaction-card<br/>连续行动与响应窗口"]
     Harness["repository harness<br/>依赖图、门禁编排、覆盖率"]
@@ -35,6 +37,7 @@ flowchart TB
     Ruleset --> Contracts
     Runtime --> Contracts
     Simulation --> Contracts
+    Trajectory --> Contracts
     Hidden --> Contracts
     Hidden --> Ruleset
     Hidden --> Runtime
@@ -46,6 +49,7 @@ flowchart TB
     Harness -.验证.-> Ruleset
     Harness -.验证.-> Runtime
     Harness -.验证.-> Simulation
+    Harness -.验证.-> Trajectory
     Harness -.验证.-> Hidden
     Harness -.验证.-> Card
 ```
@@ -57,6 +61,7 @@ flowchart TB
 | `ruleset`            | plugin 拓扑安装、配置解析、semantic ownership、锁定、组合图、query、结算 | `RulesetRuntime` 与领域 registrar    |
 | `game-runtime`       | decision action/batch 校验、事件 journal、GameModule 接口、确定性随机    | 可由 Match host 驱动的 `GameMachine` |
 | `simulation`         | candidate 读取、runner 复跑、差异与敏感内容检查、fixture 批准            | reviewed deterministic corpus        |
+| `trajectory`         | ACP Turn 内 stream 合并、tool upsert、permission、usage、脱敏与截断      | 可持久化的 Turn/Record callbacks     |
 | conformance examples | 用独立领域状态组合 Ruleset 与 GameModule                                 | 可执行测试游戏及其 restore 证据      |
 | repository harness   | 运行门禁阶段并校验内部依赖、文件边界、类型、格式、覆盖率和构建           | 独立仓库验收结果                     |
 
@@ -181,6 +186,21 @@ decision 可以通过 callbacks 进入上层诊断。
 下一 sequence 建立范围；完成后 acknowledge，传输不确定时 mark uncertain。调用方只能明确清理未
 发送 attempt，或在外部对账后 abandon uncertain 并推进 cursor。
 
+## Trajectory Turn 与 Record
+
+`TrajectoryTurnRecorder` 接收调用方创建的 Turn、record ordinal store、Turn/Record codecs 和保存
+callbacks。每次 mutation 都通过 callback 返回已保存对象，上层据此分配 revision、广播 delta 或接入
+其他持久实现。
+
+一个 Turn 内的 reasoning 与 message chunks 按 channel、message ID、tool boundary 和 stream
+generation 合并。tool call 与 update 按 tool-call ID upsert；terminal status 写入完成时间和 duration。
+usage 同时更新 Turn 并产生 usage Record。permission、accepted action、diagnostic、lifecycle、cancel、
+failure 与正常完成形成有序 Record 或 Turn 状态。
+
+结构化 input/output 在序列化前递归处理。authorization、credential、password、secret、token、API key
+与 private key 字段写为 `[REDACTED]`，`_meta` 被移除，循环对象写为稳定标记，数组和对象属性有界。
+Prompt/message/tool 内容和 diagnostics 使用各自长度上限，截断位置写入 `truncatedFields`。
+
 ## 仓库门禁
 
 `run-gates` 按阶段并行执行 repository policies 与代码检查，在任一阶段失败时停止后续阶段。当前
@@ -199,8 +219,10 @@ decision 可以通过 callbacks 进入上层诊断。
 ## 架构不变量
 
 - 游戏 registrar 拥有具体 semantic kinds 与 registries，Ruleset Core 拥有组合和锁定算法。
-- `ruleset`、`game-runtime` 与 `simulation` 只依赖 `contracts`；examples 是组合层。
+- `ruleset`、`game-runtime`、`simulation` 与 `trajectory` 的内部 package 依赖只指向 `contracts`；
+  examples 是组合层。
 - `acp-runtime` 只拥有协议、进程、Session 与 delivery 原语。
+- `trajectory` 只拥有单个 ACP Turn 内的 Record 语义和内容安全边界。
 - decision boundary 是 host 驱动游戏的唯一行动契约。
 - barrier action batch 按冻结 actor 顺序提交。
 - game state 由 initial state 与连续事件唯一重建。

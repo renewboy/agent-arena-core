@@ -5,8 +5,9 @@
 
 ## 边界
 
-- `acp-runtime` 是独立协议与进程包；`contracts` 是底层共享词汇；`ruleset`、`game-runtime` 与
-  `simulation` 只依赖 `contracts`；examples 可以依赖全部生产 packages。
+- `acp-runtime` 是独立协议与进程包；`contracts` 是底层共享词汇；在内部 package 依赖图中，
+  `ruleset`、`game-runtime`、`simulation` 与 `trajectory` 只依赖 `contracts`；examples 可以依赖全部
+  生产 packages。
 - 生产 packages 只定义跨游戏契约，具体语义由游戏模块通过公开扩展点注册。
 - Ruleset 负责编译游戏插件；Match host 只消费 `GameModule` 与 decision boundary。
 - 确定性 game events 与 Session、delivery、trajectory 等运行记录分离。

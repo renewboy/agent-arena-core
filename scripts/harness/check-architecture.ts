@@ -6,6 +6,7 @@ const roots = [
   'packages/ruleset/src',
   'packages/game-runtime/src',
   'packages/simulation/src',
+  'packages/trajectory/src',
   'examples/hidden-team/src',
   'examples/reaction-card/src',
 ] as const
@@ -16,6 +17,7 @@ const allowedInternalDependencies: Readonly<Record<string, ReadonlySet<string>>>
   'packages/ruleset': new Set(['contracts']),
   'packages/game-runtime': new Set(['contracts']),
   'packages/simulation': new Set(['contracts']),
+  'packages/trajectory': new Set(['contracts']),
   'examples/hidden-team': new Set(['contracts', 'ruleset', 'game-runtime']),
   'examples/reaction-card': new Set(['contracts', 'ruleset', 'game-runtime']),
 }
