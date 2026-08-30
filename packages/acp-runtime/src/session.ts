@@ -23,6 +23,7 @@ const sessionCloseTimeoutMs = 1_000
 export interface AcpSessionStartOptions {
   readonly cwd: string
   readonly launch: ProcessLaunchSpec
+  readonly clientInfo?: { readonly name: string; readonly version: string }
   readonly model?: string
   readonly modelConfigKey?: string
   readonly reasoningEffort?: string
@@ -99,6 +100,7 @@ export class AcpSession {
       ...(options.onStderr ? { onStderr: options.onStderr } : {}),
     })
     try {
+      const clientInfo = options.clientInfo ?? { name: 'agent-arena-core', version: '0.1.0' }
       let activeSession: AcpSession | null = null
       const app = client({ name: 'Agent Arena' })
         .onRequest(methods.client.session.requestPermission, ({ params }) =>
@@ -113,11 +115,11 @@ export class AcpSession {
       )
       const connection = app.connect(stream)
       const context = connection.agent
-      const initialized = await context.request(methods.agent.initialize, {
+      const initialized = (await context.request(methods.agent.initialize, {
         protocolVersion: PROTOCOL_VERSION,
         clientCapabilities: {},
-        clientInfo: { name: 'agent-arena-core', version: '0.1.0' },
-      })
+        clientInfo,
+      })) as InitializeResponse
       if (initialized.protocolVersion !== PROTOCOL_VERSION) {
         throw new Error(
           `ACP protocol mismatch: expected ${PROTOCOL_VERSION}, received ${initialized.protocolVersion}`,
