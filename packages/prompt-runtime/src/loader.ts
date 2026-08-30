@@ -90,7 +90,11 @@ export function validatePromptBundleGraph<
       const usageAudience = templateAudience(bundle, name, adapter)
       for (const importedName of staticTemplateImports(source, name)) {
         const importedId = bundleName(importedName) as BundleId
-        if (importedId !== bundle.id && !adapter.imports(bundle.manifest).includes(importedId)) {
+        if (
+          importedId !== bundle.id &&
+          !adapter.imports(bundle.manifest).includes(importedId) &&
+          !adapter.isImplicitImport?.(bundle.id, importedId)
+        ) {
           throw new Error(`Prompt template ${name} imports undeclared bundle ${importedId}`)
         }
         const importedBundle = byId.get(importedId)
@@ -149,7 +153,11 @@ function validateExternalReference<Manifest, BundleId extends string, Audience e
 ): void {
   const importedName = resolvePromptTemplate(bundle.id, entry.reference)
   const importedId = bundleName(importedName) as BundleId
-  if (importedId !== bundle.id && !adapter.imports(bundle.manifest).includes(importedId)) {
+  if (
+    importedId !== bundle.id &&
+    !adapter.imports(bundle.manifest).includes(importedId) &&
+    !adapter.isImplicitImport?.(bundle.id, importedId)
+  ) {
     throw new Error(`Prompt bundle ${bundle.id} references undeclared ${importedId}`)
   }
   const importedBundle = byId.get(importedId)

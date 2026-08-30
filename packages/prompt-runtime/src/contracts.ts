@@ -24,6 +24,7 @@ export interface PromptBundleAdapter<
   templateReferences(manifest: Manifest): readonly PromptTemplateReference<Audience>[]
   sharedTemplates(manifest: Manifest): readonly PromptSharedTemplate<Audience>[]
   normalizeAudience(audience: Audience): PromptAudienceClass
+  isImplicitImport?(owner: BundleId, imported: BundleId): boolean
 }
 
 export interface LoadedPromptBundle<Manifest, BundleId extends string = string> {

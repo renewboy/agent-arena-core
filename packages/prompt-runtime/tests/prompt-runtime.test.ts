@@ -61,6 +61,26 @@ describe('Prompt bundle files and graph', () => {
     expect(() => environment.getTemplate('missing/template.njk', true)).toThrow(/Unknown Prompt/)
   })
 
+  it('supports adapter-declared implicit imports', async () => {
+    const root = await fixture()
+    await writeManifest(root, 'game', {
+      id: 'game',
+      references: [
+        { reference: 'turn.njk', audience: 'public' },
+        { reference: '@core/public.njk', audience: 'public' },
+      ],
+    })
+    const implicitAdapter: typeof adapter = {
+      ...adapter,
+      isImplicitImport: (_owner, imported) => imported === 'core',
+    }
+    const bundles = [
+      loadPromptBundle('core', resolve(root, 'core'), implicitAdapter),
+      loadPromptBundle('game', resolve(root, 'game'), implicitAdapter),
+    ]
+    expect(() => validatePromptBundleGraph(bundles, implicitAdapter)).not.toThrow()
+  })
+
   it('rejects missing bundles, mismatched manifests, unsupported files, links, and locales', async () => {
     const root = await fixture()
     expect(() => loadPromptBundle('missing', resolve(root, 'missing'), adapter)).toThrow(/Missing/)

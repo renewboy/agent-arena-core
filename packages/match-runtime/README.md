@@ -8,3 +8,7 @@ boundary 声明顺序一次提交。
 Participant driver 负责连接 ACP、人工输入或测试脚本；Session binding store 保存 pending accepted
 action。编排失败不提交部分 barrier，重试可以复用同 decision ID 的已持久动作。本包不拥有具体游戏
 阶段、工具名、Prompt 文案、HTTP/MCP 传输或产品暂停策略。
+
+`BoundaryExecutor` 可以包裹或接管一个 decision 的执行，用于游戏自有的流式输入、播放门控或其他
+runtime control。默认 executor 仍执行标准 observation → driver → gateway → sealed batch → submit
+链路；Core 不根据 boundary kind 或产品 semantic 选择 executor。

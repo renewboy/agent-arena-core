@@ -166,6 +166,46 @@ describe('Match orchestrator', () => {
     orchestrator.close()
   })
 
+  it('allows a game adapter to wrap default boundary execution', async () => {
+    const module = createHiddenTeamModule()
+    const machine = module.create({
+      matchId: MatchIdSchema.parse('match-hidden-team'),
+      setup: hiddenTeamSetup(),
+      seed: 1,
+    })
+    const driver = new ScriptedParticipantDriver(
+      new Map([
+        [
+          ParticipantIdSchema.parse('participant-red-one'),
+          [{ kind: 'text' as const, text: 'warm' }],
+        ],
+        [
+          ParticipantIdSchema.parse('participant-blue-one'),
+          [{ kind: 'text' as const, text: 'water' }],
+        ],
+      ]),
+    )
+    const calls: string[] = []
+    const orchestrator = new MatchOrchestrator({
+      module,
+      machine,
+      driver,
+      boundaryExecutor: {
+        execute: async (context) => {
+          calls.push(`before:${context.boundary.id}`)
+          const result = await context.runDefault()
+          calls.push(`after:${result.events.length}`)
+          return result
+        },
+      },
+      beforeSubmit: (boundary, actions) => {
+        calls.push(`submit:${boundary.id}:${actions.length}`)
+      },
+    })
+    await orchestrator.runDecision()
+    expect(calls).toEqual(['before:decision-clue-1', 'submit:decision-clue-1:2', 'after:2'])
+  })
+
   it('runs to an outcome, publishes events, and returns null after the terminal boundary', async () => {
     const module = createHiddenTeamModule()
     const machine = module.create({

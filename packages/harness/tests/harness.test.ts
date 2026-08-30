@@ -4,9 +4,14 @@ import { resolve } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
 import {
   discoverRepositoryFiles,
+  dependencyPolicy,
+  fileLinePolicy,
+  markdownLinkPolicy,
   readRepositoryText,
   repositoryPath,
+  requiredFilesPolicy,
   runGatePhases,
+  runRepositoryPolicies,
   type RepositoryGate,
 } from '../src/index.js'
 
@@ -84,5 +89,78 @@ describe('repository harness', () => {
     await expect(
       runGatePhases([[{ label: 'missing', command: resolve(root, 'missing-command'), args: [] }]]),
     ).rejects.toThrow()
+  })
+
+  it('runs configurable dependency, line, link, and required-file policies', async () => {
+    const root = await mkdtemp(resolve(tmpdir(), 'arena-policies-'))
+    roots.push(root)
+    await mkdir(resolve(root, 'packages', 'one', 'src'), { recursive: true })
+    await mkdir(resolve(root, 'packages', 'two', 'src'), { recursive: true })
+    await mkdir(resolve(root, 'docs'))
+    await writeFile(
+      resolve(root, 'packages', 'one', 'package.json'),
+      JSON.stringify({ name: '@scope/one', dependencies: { '@scope/two': 'workspace:*' } }),
+    )
+    await writeFile(
+      resolve(root, 'packages', 'two', 'package.json'),
+      JSON.stringify({ name: '@scope/two' }),
+    )
+    await writeFile(
+      resolve(root, 'packages', 'one', 'src', 'index.ts'),
+      "export * from '@scope/two'\n",
+    )
+    await writeFile(
+      resolve(root, 'packages', 'two', 'src', 'index.ts'),
+      'export const two = true\n',
+    )
+    await writeFile(resolve(root, 'docs', 'target.md'), '# Target\n')
+    await writeFile(resolve(root, 'README.md'), '[Target](docs/target.md)\n')
+    const owners = {
+      'packages/one': {
+        sourceRoot: 'packages/one/src',
+        packageName: 'one',
+        allowedDependencies: new Set(['two']),
+      },
+      'packages/two': {
+        sourceRoot: 'packages/two/src',
+        packageName: 'two',
+        allowedDependencies: new Set<string>(),
+      },
+    }
+    await expect(
+      runRepositoryPolicies([
+        dependencyPolicy({ projectRoot: root, scope: '@scope', owners }),
+        fileLinePolicy({
+          projectRoot: root,
+          roots: ['packages'],
+          extensions: new Set(['.ts']),
+          maximumLines: 5,
+        }),
+        markdownLinkPolicy({ projectRoot: root, roots: ['.'] }),
+        requiredFilesPolicy({ projectRoot: root, paths: ['README.md'] }),
+      ]),
+    ).resolves.toBeUndefined()
+
+    await writeFile(resolve(root, 'packages', 'two', 'src', 'bad.ts'), "import '@scope/one'\n")
+    await writeFile(
+      resolve(root, 'packages', 'one', 'package.json'),
+      JSON.stringify({ name: '@scope/wrong', dependencies: {} }),
+    )
+    await writeFile(resolve(root, 'README.md'), '[Missing](docs/missing.md)\n')
+    await expect(
+      runRepositoryPolicies([
+        dependencyPolicy({ projectRoot: root, scope: '@scope', owners }),
+        fileLinePolicy({
+          projectRoot: root,
+          roots: ['packages'],
+          extensions: new Set(['.ts']),
+          maximumLines: 0,
+        }),
+        markdownLinkPolicy({ projectRoot: root, roots: ['.'] }),
+        requiredFilesPolicy({ projectRoot: root, paths: ['missing.txt'] }),
+      ]),
+    ).rejects.toThrow(
+      /dependencies:.*cannot import.*file-lines:.*markdown-links:.*required-files:/s,
+    )
   })
 })

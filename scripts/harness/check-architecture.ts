@@ -28,7 +28,15 @@ const allowedInternalDependencies: Readonly<Record<string, ReadonlySet<string>>>
   'packages/storage-sqlite': new Set(['contracts']),
   'packages/testkit': new Set(['contracts', 'match-runtime']),
   'packages/trajectory': new Set(['contracts']),
-  'examples/hidden-team': new Set(['contracts', 'ruleset', 'game-runtime']),
+  'examples/hidden-team': new Set([
+    'contracts',
+    'ruleset',
+    'game-runtime',
+    'prompt-runtime',
+    'match-runtime',
+    'simulation',
+    'testkit',
+  ]),
   'examples/reaction-card': new Set(['contracts', 'ruleset', 'game-runtime']),
 }
 

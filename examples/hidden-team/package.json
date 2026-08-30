@@ -10,7 +10,11 @@
   "dependencies": {
     "@agent-arena/contracts": "workspace:*",
     "@agent-arena/game-runtime": "workspace:*",
+    "@agent-arena/match-runtime": "workspace:*",
+    "@agent-arena/prompt-runtime": "workspace:*",
     "@agent-arena/ruleset": "workspace:*",
+    "@agent-arena/simulation": "workspace:*",
+    "@agent-arena/testkit": "workspace:*",
     "zod": "4.4.3"
   }
 }

@@ -44,9 +44,21 @@ importers:
       '@agent-arena/game-runtime':
         specifier: workspace:*
         version: link:../../packages/game-runtime
+      '@agent-arena/match-runtime':
+        specifier: workspace:*
+        version: link:../../packages/match-runtime
+      '@agent-arena/prompt-runtime':
+        specifier: workspace:*
+        version: link:../../packages/prompt-runtime
       '@agent-arena/ruleset':
         specifier: workspace:*
         version: link:../../packages/ruleset
+      '@agent-arena/simulation':
+        specifier: workspace:*
+        version: link:../../packages/simulation
+      '@agent-arena/testkit':
+        specifier: workspace:*
+        version: link:../../packages/testkit
       zod:
         specifier: 4.4.3
         version: 4.4.3

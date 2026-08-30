@@ -35,8 +35,26 @@ export interface MatchOrchestratorOptions<Setup, State, Facts, Outcome extends J
   readonly driver: ParticipantTurnDriver<Facts>
   readonly gateway?: ActionGateway
   readonly sessions?: SessionBindingStore
+  readonly boundaryExecutor?: BoundaryExecutor<Setup, State, Facts, Outcome>
+  readonly beforeSubmit?: (
+    boundary: DecisionBoundary,
+    actions: readonly GameAction[],
+  ) => void | Promise<void>
   readonly onEvents?: (events: readonly GameEvent[]) => void | Promise<void>
   readonly onFailure?: (error: unknown, boundary: DecisionBoundary) => void | Promise<void>
+}
+
+export interface BoundaryExecutionContext<Setup, State, Facts, Outcome extends JsonValue> {
+  readonly boundary: DecisionBoundary
+  readonly module: GameModule<Setup, State, Facts, Outcome>
+  readonly machine: GameMachine<State, Outcome>
+  runDefault(): Promise<DecisionRunResult<Outcome>>
+}
+
+export interface BoundaryExecutor<Setup, State, Facts, Outcome extends JsonValue> {
+  execute(
+    context: BoundaryExecutionContext<Setup, State, Facts, Outcome>,
+  ): Promise<DecisionRunResult<Outcome>>
 }
 
 export interface DecisionRunResult<Outcome extends JsonValue> {
@@ -63,6 +81,25 @@ export class MatchOrchestrator<Setup, State, Facts, Outcome extends JsonValue> {
   public async runDecision(): Promise<DecisionRunResult<Outcome> | null> {
     const boundary = this.machine.currentDecision()
     if (!boundary) return null
+    try {
+      return this.#options.boundaryExecutor
+        ? await this.#options.boundaryExecutor.execute({
+            boundary,
+            module: this.#options.module,
+            machine: this.machine,
+            runDefault: () => this.#runDefault(boundary),
+          })
+        : await this.#runDefault(boundary)
+    } catch (error) {
+      await this.#options.onFailure?.(error, boundary)
+      throw new MatchOrchestrationError(
+        `Decision ${boundary.id} failed: ${error instanceof Error ? error.message : String(error)}`,
+        { cause: error },
+      )
+    }
+  }
+
+  async #runDefault(boundary: DecisionBoundary): Promise<DecisionRunResult<Outcome>> {
     const matchId = this.machine.matchId
     this.#gateway.open(matchId, boundary, (participantId, action) => {
       this.#options.sessions?.savePendingAction(matchId, participantId, boundary.id, action)
@@ -87,6 +124,7 @@ export class MatchOrchestrator<Setup, State, Facts, Outcome extends JsonValue> {
           `Decision ${boundary.id} is missing actors: ${this.#gateway.pendingActors(matchId, boundary).join(', ')}`,
         )
       }
+      await this.#options.beforeSubmit?.(boundary, actions)
       const events = this.machine.submit(actions)
       await this.#options.onEvents?.(events)
       for (const actor of boundary.actors) {
@@ -94,15 +132,9 @@ export class MatchOrchestrator<Setup, State, Facts, Outcome extends JsonValue> {
           this.#options.sessions.clearPendingAction(matchId, actor.participantId)
         }
       }
-      this.#gateway.close(matchId, boundary)
       return { boundary, actions, events, outcome: this.machine.outcome }
-    } catch (error) {
+    } finally {
       this.#gateway.close(matchId, boundary)
-      await this.#options.onFailure?.(error, boundary)
-      throw new MatchOrchestrationError(
-        `Decision ${boundary.id} failed: ${error instanceof Error ? error.message : String(error)}`,
-        { cause: error },
-      )
     }
   }
 

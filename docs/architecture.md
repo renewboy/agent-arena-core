@@ -19,8 +19,9 @@
 - ACP Turn 的 Prompt、stream、tool、permission、usage 与 diagnostics 在持久化前统一脱敏和截断；
 - 规则组合算法不要求共享具体游戏的 state、action payload、event payload 或 outcome；
 - Match、Session binding、delivery 与 trajectory 通过 ports 持久，SQLite 是参考 adapter；
-- 两种控制流不同的 conformance games 验证 Ruleset、GameModule、decision、visibility 与 restore；
-  其他 packages 由各自的协议、故障和持久化 self-tests 验证。
+- 两种控制流不同的 conformance games 验证 Ruleset、GameModule、Prompt、Match 编排、visibility、
+  transient failure、restart 与 simulation 双 runner；其他 packages 由各自的协议与持久化 self-tests
+  验证。
 
 ## 组件与依赖方向
 
@@ -86,7 +87,7 @@ flowchart TB
 | `storage-sqlite`     | store ports 的 module-scoped migration、事务写入、解析与级联删除         | 可重启的参考 SQLite stores           |
 | `trajectory`         | ACP Turn 内 stream 合并、tool upsert、permission、usage、脱敏与截断      | 可持久化的 Turn/Record callbacks     |
 | `testkit`            | 内存 stores、scripted participant、延迟与故障注入                        | 无产品数据的 runtime 测试驱动        |
-| conformance examples | 用独立领域状态组合 Ruleset 与 GameModule                                 | 可执行测试游戏及其 restore 证据      |
+| conformance examples | 用独立领域状态组合规则、Prompt、编排、restart 与 simulation              | 可执行 full-stack 证明               |
 | `harness`            | repository 文件发现与 phase gate runner；policy 由仓库脚本提供           | 独立仓库验收结果                     |
 
 ## Ruleset 编译与锁定
@@ -175,6 +176,10 @@ type，再解析 payload；游戏校验继续处理资源、目标、关系或�
 驱动全部 actors，但 gateway 在动作集完整前不向 `GameMachine` 提交任何内容。seal 按 boundary actor
 顺序返回 batch，因此 participant 完成顺序不会改变事件顺序或向其他 actor 暴露部分选择。
 
+`BoundaryExecutor` 可以在不改变 boundary union 的前提下包裹或接管执行。默认 executor 完成标准
+observation、driver、gateway 与 submit 链路；游戏 adapter 可以实现流式输入、播放门控或其他 runtime
+control。executor 的选择属于组合层，Core 不读取 action type、phase ID 或 Prompt facts。
+
 Session binding store 中与当前 decision ID 匹配的 pending action 会在 driver 启动前恢复并重新校验。
 新 action 的持久化 callback 在 gateway 返回 accepted receipt 前完成。编排失败会关闭内存 expectation，
 保留已持久 action，且不会提交不完整 barrier；成功提交后才清理所有参与者的 pending action。产品层
@@ -231,6 +236,10 @@ determinism 和 runner agreement 同时成立时，runner result 具备显式接
 exclusive create 写入 fixture。warnings 需要显式 acknowledgement；runner result 与 capture 不同
 时需要显式 `acceptCurrent`。既有 fixture 只接受相同 source fingerprint 与 reviewed result。
 
+`AdaptedSimulationWorkflow` 将上述控制流应用到游戏自有 artifacts。`SimulationArtifactAdapter` 提供
+capture/fixture 解析、规范化、摘要、reviewed expected、variants、fixture 构造和 secret scan；调用方
+可以保持既有 wire/fixture schema，同时复用同一 runner agreement 与不可覆盖批准语义。
+
 ## ACP Session 与 delivery
 
 `AgentProcess` 使用显式 command/args/env 和 workspace 启动 ACP stdio 进程。POSIX guardian 持有独立
@@ -285,6 +294,9 @@ Core 的 `run-gates` 在同一 phase 并行执行检查，并在任一 gate 失�
 `@agent-arena/testkit` 提供内存 store 与 scripted participant driver。脚本可以按 participant 排队动作、
 改变完成顺序或注入失败，用于验证密封 barrier 和 pending action 恢复，而不依赖真实 Agent、凭据或
 产品数据。
+
+`@agent-arena/harness` 同时提供 dependency DAG、源码行数、Markdown link 与 required artifact
+policies。调用仓库声明 roots、允许依赖和例外；Core 与产品语义检查仍由各自仓库脚本拥有。
 
 ## 架构不变量
 
