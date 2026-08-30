@@ -27,7 +27,7 @@ export class AgentProcess {
       })
       this.#processGroupId = null
     } else {
-      const guardian = fileURLToPath(new URL('../process-guardian.sh', import.meta.url))
+      const guardian = processGuardianPath()
       const child = spawn('/bin/sh', [guardian, options.launch.command, ...options.launch.args], {
         cwd: options.cwd,
         env: { ...options.launch.env, AGENT_ARENA_GUARDIAN_NODE: process.execPath },
@@ -91,6 +91,10 @@ export class AgentProcess {
       if (!isNoSuchProcess(error)) throw error
     }
   }
+}
+
+export function processGuardianPath(): string {
+  return fileURLToPath(new URL('../process-guardian.sh', import.meta.url))
 }
 
 function isNoSuchProcess(error: unknown): boolean {
