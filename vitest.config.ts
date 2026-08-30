@@ -13,6 +13,9 @@ export default defineConfig({
       '@agent-arena/game-runtime': fileURLToPath(
         new URL('./packages/game-runtime/src/index.ts', import.meta.url),
       ),
+      '@agent-arena/simulation': fileURLToPath(
+        new URL('./packages/simulation/src/index.ts', import.meta.url),
+      ),
     },
   },
   test: {

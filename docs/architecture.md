@@ -24,12 +24,14 @@ flowchart TB
     Contracts["contracts<br/>IDs、audience、信封、Ruleset lock"]
     Ruleset["ruleset<br/>plugin 编译、ownership、graph、query、resolution"]
     Runtime["game-runtime<br/>GameModule、decision、journal、deterministic"]
+    Simulation["simulation<br/>candidate、双 runner、fixture"]
     Hidden["hidden-team<br/>group privacy 与 barrier"]
     Card["reaction-card<br/>连续行动与响应窗口"]
     Harness["repository harness<br/>依赖图、门禁编排、覆盖率"]
 
     Ruleset --> Contracts
     Runtime --> Contracts
+    Simulation --> Contracts
     Hidden --> Contracts
     Hidden --> Ruleset
     Hidden --> Runtime
@@ -39,6 +41,7 @@ flowchart TB
     Harness -.验证.-> Contracts
     Harness -.验证.-> Ruleset
     Harness -.验证.-> Runtime
+    Harness -.验证.-> Simulation
     Harness -.验证.-> Hidden
     Harness -.验证.-> Card
 ```
@@ -48,6 +51,7 @@ flowchart TB
 | `contracts`          | branded IDs、Ruleset lock、observer/audience、action/event/decision 信封 | Zod schemas 与跨包类型               |
 | `ruleset`            | plugin 拓扑安装、配置解析、semantic ownership、锁定、组合图、query、结算 | `RulesetRuntime` 与领域 registrar    |
 | `game-runtime`       | decision action/batch 校验、事件 journal、GameModule 接口、确定性随机    | 可由 Match host 驱动的 `GameMachine` |
+| `simulation`         | candidate 读取、runner 复跑、差异与敏感内容检查、fixture 批准            | reviewed deterministic corpus        |
 | conformance examples | 用独立领域状态组合 Ruleset 与 GameModule                                 | 可执行测试游戏及其 restore 证据      |
 | repository harness   | 运行门禁阶段并校验内部依赖、文件边界、类型、格式、覆盖率和构建           | 独立仓库验收结果                     |
 
@@ -135,6 +139,21 @@ ActionSpec、barrier 完整性、稳定 actor 顺序、轮换 actor 与终局 re
 `reaction-card` 使用确定性牌堆、participant-only 抽牌事件、连续主行动和嵌套响应 boundary，验证
 私有资源、seed 稳定性、响应窗口 restore、阻挡与伤害结算以及终局 replay。
 
+## 仿真评审
+
+simulation candidate 保存游戏 ID、Ruleset lock、setup、结构化 Turns、runtime controls、完整 observed
+events、checkpoint、来源 fingerprint 与 warnings。candidate 路径使用 exclusive create；相同 ID 的
+不同来源内容以冲突失败。
+
+workflow 至少要求两个独立 `SimulationRunner`。评审以同一个 variant 将 candidate 交给每个 runner
+执行两次，分别比较 runner 自身确定性，再比较所有 runner 的 canonical result。secret scan、runner
+determinism 和 runner agreement 同时成立时，runner result 具备显式接受资格；runner 同时报告成功
+时，captured observation 可以直接批准。
+
+批准将完整 events 收敛为 event count、event digest、event type sequence 与游戏 checkpoint，并使用
+exclusive create 写入 fixture。warnings 需要显式 acknowledgement；runner result 与 capture 不同
+时需要显式 `acceptCurrent`。既有 fixture 只接受相同 source fingerprint 与 reviewed result。
+
 ## 仓库门禁
 
 `run-gates` 按阶段并行执行 repository policies 与代码检查，在任一阶段失败时停止后续阶段。当前
@@ -153,9 +172,10 @@ ActionSpec、barrier 完整性、稳定 actor 顺序、轮换 actor 与终局 re
 ## 架构不变量
 
 - 游戏 registrar 拥有具体 semantic kinds 与 registries，Ruleset Core 拥有组合和锁定算法。
-- `ruleset` 与 `game-runtime` 只依赖 `contracts`；examples 是组合层。
+- `ruleset`、`game-runtime` 与 `simulation` 只依赖 `contracts`；examples 是组合层。
 - decision boundary 是 host 驱动游戏的唯一行动契约。
 - barrier action batch 按冻结 actor 顺序提交。
 - game state 由 initial state 与连续事件唯一重建。
 - observation 只包含其 observer audience 授权的事实。
+- simulation fixture 只来自确定性复跑、runner agreement 与显式批准。
 - conformance examples 通过公开 package exports 组合运行时。

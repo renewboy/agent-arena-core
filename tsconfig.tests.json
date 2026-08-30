@@ -10,7 +10,8 @@
     "paths": {
       "@agent-arena/contracts": ["./packages/contracts/src/index.ts"],
       "@agent-arena/ruleset": ["./packages/ruleset/src/index.ts"],
-      "@agent-arena/game-runtime": ["./packages/game-runtime/src/index.ts"]
+      "@agent-arena/game-runtime": ["./packages/game-runtime/src/index.ts"],
+      "@agent-arena/simulation": ["./packages/simulation/src/index.ts"]
     },
     "types": ["node", "vitest/globals"]
   },

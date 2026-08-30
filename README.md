@@ -9,6 +9,7 @@ Agent Arena Core 是面向多 Agent 回合制游戏的 Ruleset-first 基础框�
 - `@agent-arena/ruleset`：RulePlugin 安装、semantic ownership、Ruleset 编译、组合图与 resolution
   agenda。
 - `@agent-arena/game-runtime`：GameModule、decision boundary、事件 journal 与确定性随机源。
+- `@agent-arena/simulation`：candidate、双 runner 评审、approved fixture 与 canonical helpers。
 - `examples/hidden-team`：验证团队私有事实、文字行动与 barrier。
 - `examples/reaction-card`：验证牌堆、连续行动、响应窗口与 restore。
 

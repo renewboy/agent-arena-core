@@ -4,6 +4,7 @@
     { "path": "packages/contracts" },
     { "path": "packages/ruleset" },
     { "path": "packages/game-runtime" },
+    { "path": "packages/simulation" },
     { "path": "examples/hidden-team" },
     { "path": "examples/reaction-card" }
   ]

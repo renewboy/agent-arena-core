@@ -36,3 +36,9 @@ export type EventSequence = z.infer<typeof EventSequenceSchema>
 
 export const ObservationRevisionSchema = z.number().int().nonnegative()
 export type ObservationRevision = z.infer<typeof ObservationRevisionSchema>
+
+export type SimulationId = Brand<string, 'SimulationId'>
+export const SimulationIdSchema = z
+  .string()
+  .regex(/^simulation-[a-z0-9][a-z0-9-]{5,95}$/)
+  .transform((value) => value as SimulationId)
