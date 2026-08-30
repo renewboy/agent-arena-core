@@ -1,7 +1,7 @@
 # Agent Arena Core
 
 Agent Arena Core 是面向多 Agent 回合制游戏的 Ruleset-first 基础框架。它提供版本化规则组合、
-确定性事件运行时、单人决策与多人 barrier 契约，以及用于跨游戏验证的 conformance games。
+确定性事件运行时、Prompt bundle、单人决策与多人 barrier 编排、持久化端口和验证工具。
 
 ## Workspace
 
@@ -10,8 +10,13 @@ Agent Arena Core 是面向多 Agent 回合制游戏的 Ruleset-first 基础框�
 - `@agent-arena/ruleset`：RulePlugin 安装、semantic ownership、Ruleset 编译、组合图与 resolution
   agenda。
 - `@agent-arena/game-runtime`：GameModule、decision boundary、事件 journal 与确定性随机源。
+- `@agent-arena/prompt-runtime`：安全 bundle 装载、静态 import、audience 与语义覆盖校验。
+- `@agent-arena/match-runtime`：动态 ActionGateway、密封 barrier 与可恢复 accepted action 编排。
 - `@agent-arena/simulation`：candidate、双 runner 评审、approved fixture 与 canonical helpers。
+- `@agent-arena/storage-sqlite`：Match、Session、delivery 与 trajectory ports 的参考 SQLite 实现。
 - `@agent-arena/trajectory`：ACP Turn/Record 合并、脱敏、截断与持久化 callbacks。
+- `@agent-arena/harness`：repository 文件发现与分阶段 gate runner。
+- `@agent-arena/testkit`：内存 stores 与 scripted participant driver。
 - `examples/hidden-team`：验证团队私有事实、文字行动与 barrier。
 - `examples/reaction-card`：验证牌堆、连续行动、响应窗口与 restore。
 
@@ -22,6 +27,6 @@ pnpm install --frozen-lockfile
 pnpm check
 ```
 
-`pnpm check` 运行架构门禁、类型、lint、格式、测试覆盖率与生产构建。
+`pnpm check` 运行架构/文档门禁、类型、lint、格式、测试覆盖率与生产构建。
 
 跨包职责、Ruleset 编译和 decision/event 数据流见[架构设计](docs/architecture.md)。

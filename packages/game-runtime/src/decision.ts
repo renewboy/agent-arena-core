@@ -21,6 +21,7 @@ export interface ActionSpec<Payload extends JsonValue = JsonValue> {
   readonly toolName: string
   readonly inputMode: ActionInputMode
   readonly schema: z.ZodType<Payload>
+  readonly textInput?: (text: string) => Payload
   readonly streamAudience?: Audience
 }
 

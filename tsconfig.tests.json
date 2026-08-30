@@ -9,9 +9,14 @@
     "moduleResolution": "Bundler",
     "paths": {
       "@agent-arena/contracts": ["./packages/contracts/src/index.ts"],
+      "@agent-arena/harness": ["./packages/harness/src/index.ts"],
       "@agent-arena/ruleset": ["./packages/ruleset/src/index.ts"],
       "@agent-arena/game-runtime": ["./packages/game-runtime/src/index.ts"],
-      "@agent-arena/simulation": ["./packages/simulation/src/index.ts"]
+      "@agent-arena/prompt-runtime": ["./packages/prompt-runtime/src/index.ts"],
+      "@agent-arena/match-runtime": ["./packages/match-runtime/src/index.ts"],
+      "@agent-arena/simulation": ["./packages/simulation/src/index.ts"],
+      "@agent-arena/storage-sqlite": ["./packages/storage-sqlite/src/index.ts"],
+      "@agent-arena/testkit": ["./packages/testkit/src/index.ts"]
     },
     "types": ["node", "vitest/globals"]
   },

@@ -3,9 +3,14 @@ import { sourceFiles, text, localPath, failIfErrors } from './files.js'
 const roots = [
   'packages/acp-runtime/src',
   'packages/contracts/src',
+  'packages/harness/src',
   'packages/ruleset/src',
   'packages/game-runtime/src',
+  'packages/prompt-runtime/src',
+  'packages/match-runtime/src',
   'packages/simulation/src',
+  'packages/storage-sqlite/src',
+  'packages/testkit/src',
   'packages/trajectory/src',
   'examples/hidden-team/src',
   'examples/reaction-card/src',
@@ -14,9 +19,14 @@ const roots = [
 const allowedInternalDependencies: Readonly<Record<string, ReadonlySet<string>>> = {
   'packages/acp-runtime': new Set(),
   'packages/contracts': new Set(),
+  'packages/harness': new Set(),
   'packages/ruleset': new Set(['contracts']),
   'packages/game-runtime': new Set(['contracts']),
+  'packages/prompt-runtime': new Set(['contracts']),
+  'packages/match-runtime': new Set(['contracts', 'game-runtime']),
   'packages/simulation': new Set(['contracts']),
+  'packages/storage-sqlite': new Set(['contracts']),
+  'packages/testkit': new Set(['contracts', 'match-runtime']),
   'packages/trajectory': new Set(['contracts']),
   'examples/hidden-team': new Set(['contracts', 'ruleset', 'game-runtime']),
   'examples/reaction-card': new Set(['contracts', 'ruleset', 'game-runtime']),
@@ -36,6 +46,17 @@ for (const path of files) {
     )
   }
   const owner = sourceOwner(relativePath)
+  if (owner.startsWith('packages/')) {
+    if (/['"]@agentwolf\//.test(content)) {
+      errors.push(`${relativePath} must not import AgentWolf product packages`)
+    }
+    if (/\b(?:werewolf|sheriff|witch)\b/i.test(content)) {
+      errors.push(`${relativePath} contains product game terminology`)
+    }
+    if (/['"`](?:day|night)(?:[.-][a-z0-9-]+)?['"`]/i.test(content)) {
+      errors.push(`${relativePath} contains a product phase semantic`)
+    }
+  }
   for (const match of content.matchAll(
     /\b(?:import|export)\s+(?:type\s+)?(?:[^'";]*?\sfrom\s*)?['"](@agent-arena\/[^'"]+)['"]/g,
   )) {

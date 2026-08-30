@@ -7,14 +7,29 @@ export default defineConfig({
       '@agent-arena/contracts': fileURLToPath(
         new URL('./packages/contracts/src/index.ts', import.meta.url),
       ),
+      '@agent-arena/harness': fileURLToPath(
+        new URL('./packages/harness/src/index.ts', import.meta.url),
+      ),
       '@agent-arena/ruleset': fileURLToPath(
         new URL('./packages/ruleset/src/index.ts', import.meta.url),
       ),
       '@agent-arena/game-runtime': fileURLToPath(
         new URL('./packages/game-runtime/src/index.ts', import.meta.url),
       ),
+      '@agent-arena/prompt-runtime': fileURLToPath(
+        new URL('./packages/prompt-runtime/src/index.ts', import.meta.url),
+      ),
+      '@agent-arena/match-runtime': fileURLToPath(
+        new URL('./packages/match-runtime/src/index.ts', import.meta.url),
+      ),
       '@agent-arena/simulation': fileURLToPath(
         new URL('./packages/simulation/src/index.ts', import.meta.url),
+      ),
+      '@agent-arena/storage-sqlite': fileURLToPath(
+        new URL('./packages/storage-sqlite/src/index.ts', import.meta.url),
+      ),
+      '@agent-arena/testkit': fileURLToPath(
+        new URL('./packages/testkit/src/index.ts', import.meta.url),
       ),
     },
   },

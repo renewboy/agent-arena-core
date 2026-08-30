@@ -1,27 +1,23 @@
-import { spawn } from 'node:child_process'
+import { runGatePhases, type RepositoryGate } from '../../packages/harness/src/index.js'
 
-interface Gate {
-  readonly label: string
-  readonly args: readonly string[]
-}
-
-const repositoryGates: readonly Gate[] = [
-  { label: 'architecture', args: ['run', 'check:architecture'] },
+const repositoryGates: readonly RepositoryGate[] = [
+  { label: 'architecture', command: 'pnpm', args: ['run', 'check:architecture'] },
+  { label: 'docs', command: 'pnpm', args: ['run', 'check:docs'] },
 ]
-const codeGates: readonly Gate[] = [
-  { label: 'typecheck', args: ['run', 'typecheck'] },
-  { label: 'lint', args: ['run', 'lint'] },
-  { label: 'format', args: ['run', 'format:check'] },
-  { label: 'hygiene', args: ['run', 'hygiene'] },
+const codeGates: readonly RepositoryGate[] = [
+  { label: 'typecheck', command: 'pnpm', args: ['run', 'typecheck'] },
+  { label: 'lint', command: 'pnpm', args: ['run', 'lint'] },
+  { label: 'format', command: 'pnpm', args: ['run', 'format:check'] },
+  { label: 'hygiene', command: 'pnpm', args: ['run', 'hygiene'] },
 ]
 
 const staticPhases = [repositoryGates, codeGates] as const
-const phases: Readonly<Record<string, readonly (readonly Gate[])[]>> = {
+const phases: Readonly<Record<string, readonly (readonly RepositoryGate[])[]>> = {
   static: staticPhases,
   all: [
     ...staticPhases,
-    [{ label: 'tests', args: ['test:coverage'] }],
-    [{ label: 'build', args: ['build'] }],
+    [{ label: 'tests', command: 'pnpm', args: ['test:coverage'] }],
+    [{ label: 'build', command: 'pnpm', args: ['build'] }],
   ],
 }
 
@@ -29,18 +25,12 @@ const mode = process.argv[2] ?? 'all'
 const selected = phases[mode]
 if (!selected) throw new Error(`Unknown gate mode ${mode}`)
 
-for (const phase of selected) {
-  const results = await Promise.all(phase.map(runGate))
-  if (results.some((result) => result !== 0)) process.exit(1)
-}
+await runGatePhases(selected, {
+  onStart: (gate) =>
+    process.stdout.write(`\n[${gate.label}] ${gate.command} ${gate.args.join(' ')}\n`),
+}).catch((error: unknown) => {
+  process.stderr.write(`${error instanceof Error ? error.message : String(error)}\n`)
+  process.exit(1)
+})
 
 process.stdout.write(`harness ${mode}: ok\n`)
-
-function runGate(gate: Gate): Promise<number> {
-  process.stdout.write(`\n[${gate.label}] pnpm ${gate.args.join(' ')}\n`)
-  return new Promise((resolvePromise, reject) => {
-    const child = spawn('pnpm', [...gate.args], { stdio: 'inherit', shell: false })
-    child.once('error', reject)
-    child.once('exit', (code) => resolvePromise(code ?? 1))
-  })
-}

@@ -1,15 +1,17 @@
 # Agent Arena Core 仓库指南
 
-本仓库提供跨游戏复用的规则组合、确定性运行时和验证能力。游戏模块拥有自己的状态、动作、事件、
-观察事实和呈现语义。
+本仓库提供跨游戏复用的规则组合、确定性运行时、Prompt bundle、Match 编排、持久化端口和验证能力。
+游戏模块拥有自己的状态、动作、事件、观察事实和呈现语义。
 
 ## 边界
 
-- `acp-runtime` 是独立协议与进程包；`contracts` 是底层共享词汇；在内部 package 依赖图中，
-  `ruleset`、`game-runtime`、`simulation` 与 `trajectory` 只依赖 `contracts`；examples 可以依赖全部
-  生产 packages。
+- `acp-runtime` 与 `harness` 是独立基础包；`contracts` 是底层共享词汇。`ruleset`、`game-runtime`、
+  `prompt-runtime`、`simulation`、`storage-sqlite` 与 `trajectory` 只依赖 `contracts`；
+  `match-runtime` 只组合 `contracts` 与 `game-runtime`；`testkit` 只服务测试。
 - 生产 packages 只定义跨游戏契约，具体语义由游戏模块通过公开扩展点注册。
 - Ruleset 负责编译游戏插件；Match host 只消费 `GameModule` 与 decision boundary。
+- Match orchestrator 只通过游戏 observation、`ActionSpec`、store ports 与 participant driver 协作；
+  不内置工具名、阶段或产品恢复策略。
 - 确定性 game events 与 Session、delivery、trajectory 等运行记录分离。
 - 跨 JSON、配置或持久化边界使用 Zod；跨包 IDs 使用 branded types。
 - 新抽象必须由至少两个不同 conformance games 或一个 conformance game 与一个独立游戏模块共同
@@ -26,6 +28,7 @@
 
 ```sh
 pnpm check:architecture
+pnpm check:docs
 pnpm typecheck
 pnpm lint
 pnpm format:check

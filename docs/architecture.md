@@ -1,8 +1,8 @@
 # Agent Arena Core 架构设计
 
-本文描述 Agent Arena Core 当前提供的 Ruleset 编译、确定性游戏运行契约、conformance games 与仓库
-门禁。目标读者可以据此新增通用规则能力、实现一个游戏模块，或判断某项语义应由 Ruleset Core、
-game runtime 还是游戏模块拥有。精确字段和失败行为由各 package README、schemas 与测试负责。
+本文描述 Agent Arena Core 当前提供的 Ruleset 编译、确定性游戏运行契约、Prompt bundle、Match 编排、
+持久化端口与仓库验证能力。目标读者可以据此实现游戏模块、连接 participant runtime，或判断某项
+语义应由平台还是游戏拥有。精确字段和失败行为由各 package README、schemas 与测试负责。
 
 ## 设计目标与约束
 
@@ -11,16 +11,22 @@ game runtime 还是游戏模块拥有。精确字段和失败行为由各 packag
 - Ruleset plugin 的依赖、配置、安装顺序、语义所有权和发布指纹可机械验证；
 - 游戏状态只通过按序事件归约，create 与 restore 使用同一 reducer；
 - Match host 通过统一 decision boundary 驱动单人行动或多人 barrier；
+- Action gateway 从当前 `ActionSpec` 动态建立输入契约，accepted action 在成功回执前进入 store；
 - audience 在事件产生时声明，observation 从授权后的事件与状态构造；
+- Prompt bundle 的静态依赖、敏感度与 semantic ownership 在渲染前完成校验；
 - 一个逻辑 ACP Session 可以由新进程按精确 Session ID 恢复；
 - Prompt delivery 在 acknowledgement 前保持显式 in-flight 或 uncertain 状态；
 - ACP Turn 的 Prompt、stream、tool、permission、usage 与 diagnostics 在持久化前统一脱敏和截断；
 - 规则组合算法不要求共享具体游戏的 state、action payload、event payload 或 outcome；
-- 通用抽象由两种控制流不同的 conformance games 共同验证。
+- Match、Session binding、delivery 与 trajectory 通过 ports 持久，SQLite 是参考 adapter；
+- 两种控制流不同的 conformance games 验证 Ruleset、GameModule、decision、visibility 与 restore；
+  其他 packages 由各自的协议、故障和持久化 self-tests 验证。
 
 ## 组件与依赖方向
 
-生产 packages 共享一层 contracts，Ruleset 与 game runtime 彼此独立。examples 在组合层同时消费两者。
+生产 packages 共享一层 contracts。Ruleset、game runtime、Prompt runtime、simulation、trajectory 与
+SQLite adapter 彼此独立；Match runtime 只组合 contracts 与 game runtime。examples 在游戏组合层消费
+Ruleset 与 game runtime。
 
 ```mermaid
 flowchart TB
@@ -28,16 +34,26 @@ flowchart TB
     Contracts["contracts<br/>IDs、audience、信封、Ruleset lock"]
     Ruleset["ruleset<br/>plugin 编译、ownership、graph、query、resolution"]
     Runtime["game-runtime<br/>GameModule、decision、journal、deterministic"]
+    Prompt["prompt-runtime<br/>bundle、audience、matcher、coverage"]
+    Match["match-runtime<br/>orchestrator、ActionGateway"]
     Simulation["simulation<br/>candidate、双 runner、fixture"]
+    Storage["storage-sqlite<br/>ports、migration、restart"]
     Trajectory["trajectory<br/>Turn、Record、redaction"]
+    Testkit["testkit<br/>memory stores、scripted driver"]
     Hidden["hidden-team<br/>group privacy 与 barrier"]
     Card["reaction-card<br/>连续行动与响应窗口"]
-    Harness["repository harness<br/>依赖图、门禁编排、覆盖率"]
+    Harness["harness<br/>文件发现、门禁编排"]
 
     Ruleset --> Contracts
     Runtime --> Contracts
+    Prompt --> Contracts
+    Match --> Contracts
+    Match --> Runtime
     Simulation --> Contracts
+    Storage --> Contracts
     Trajectory --> Contracts
+    Testkit --> Contracts
+    Testkit --> Match
     Hidden --> Contracts
     Hidden --> Ruleset
     Hidden --> Runtime
@@ -48,7 +64,11 @@ flowchart TB
     Harness -.验证.-> ACP
     Harness -.验证.-> Ruleset
     Harness -.验证.-> Runtime
+    Harness -.验证.-> Prompt
+    Harness -.验证.-> Match
     Harness -.验证.-> Simulation
+    Harness -.验证.-> Storage
+    Harness -.验证.-> Testkit
     Harness -.验证.-> Trajectory
     Harness -.验证.-> Hidden
     Harness -.验证.-> Card
@@ -60,10 +80,14 @@ flowchart TB
 | `contracts`          | branded IDs、Ruleset lock、observer/audience、action/event/decision 信封 | Zod schemas 与跨包类型               |
 | `ruleset`            | plugin 拓扑安装、配置解析、semantic ownership、锁定、组合图、query、结算 | `RulesetRuntime` 与领域 registrar    |
 | `game-runtime`       | decision action/batch 校验、事件 journal、GameModule 接口、确定性随机    | 可由 Match host 驱动的 `GameMachine` |
+| `prompt-runtime`     | bundle 安全装载、静态 import、audience、matcher 与 semantic coverage     | 预编译的游戏 Prompt 模板图           |
+| `match-runtime`      | participant observation、动态输入、pending action 与密封 barrier         | 稳定排序后提交的 action batch        |
 | `simulation`         | candidate 读取、runner 复跑、差异与敏感内容检查、fixture 批准            | reviewed deterministic corpus        |
+| `storage-sqlite`     | store ports 的 module-scoped migration、事务写入、解析与级联删除         | 可重启的参考 SQLite stores           |
 | `trajectory`         | ACP Turn 内 stream 合并、tool upsert、permission、usage、脱敏与截断      | 可持久化的 Turn/Record callbacks     |
+| `testkit`            | 内存 stores、scripted participant、延迟与故障注入                        | 无产品数据的 runtime 测试驱动        |
 | conformance examples | 用独立领域状态组合 Ruleset 与 GameModule                                 | 可执行测试游戏及其 restore 证据      |
-| repository harness   | 运行门禁阶段并校验内部依赖、文件边界、类型、格式、覆盖率和构建           | 独立仓库验收结果                     |
+| `harness`            | repository 文件发现与 phase gate runner；policy 由仓库脚本提供           | 独立仓库验收结果                     |
 
 ## Ruleset 编译与锁定
 
@@ -109,20 +133,24 @@ Ruleset fingerprint 使用稳定 key 顺序计算，包含 Ruleset ID、revision
 sequenceDiagram
     participant Host as Match host
     participant Machine as GameMachine
-    participant Boundary as Decision boundary
-    participant Journal as EventJournal
-    participant Observer as Observation consumer
+    participant Driver as Participant driver
+    participant Gateway as ActionGateway
+    participant Store as SessionBindingStore
 
     Host->>Machine: currentDecision()
-    Machine-->>Host: single 或 barrier actors + ActionSpec
-    Host->>Boundary: validateDecisionBatch(actions)
-    Boundary-->>Host: 按声明 actor 顺序的 actions
+    Machine-->>Host: boundary + 有序 actors + ActionSpec
+    Host->>Machine: observe(participant)
+    Host->>Driver: observation + actor specs + token
+    Driver->>Gateway: tool payload 或 direct text
+    Gateway->>Gateway: decision/actor/schema 校验
+    Gateway->>Store: savePendingAction
+    Store-->>Gateway: persisted
+    Gateway-->>Driver: accepted receipt
+    Host->>Gateway: seal(boundary)
+    Gateway-->>Host: 按 actor 声明顺序的完整 batch
     Host->>Machine: submit(actions)
-    Machine->>Journal: append(event drafts)
-    Journal->>Journal: sequence + schema + reducer
     Machine-->>Host: 新 events / outcome / next boundary
-    Host->>Machine: observe(observer)
-    Machine-->>Observer: revision + facts + visible sequences
+    Host->>Store: clearPendingAction
 ```
 
 `single` boundary 恰好包含一个 actor 和一个已提交动作。同一 actor 可以在事件变化后继续获得新的
@@ -130,12 +158,51 @@ single boundary。`barrier` boundary 冻结完整 actor 集，每个 actor 恰�
 中的 actor 顺序返回 batch，使并发完成顺序不改变规则提交顺序。
 
 每个 `ActionSpec` 声明 action type、工具名、结构化/文本输入方式、payload Zod schema 和可选 stream
-audience。通用校验先确认 decision、actor 与 action type，再解析 payload；游戏校验继续处理资源、
-目标、关系或阶段合法性。
+audience。文本输入可以通过 `textInput` 转换为领域 payload。通用校验先确认 decision、actor 与 action
+type，再解析 payload；游戏校验继续处理资源、目标、关系或阶段合法性。
 
 `EventJournal` 分配 Match 内单调 sequence 和时间，追加后立即调用 reducer。restore 要求 Match ID
 一致且 sequence 从一开始连续。`replay()` 从 initial state 归约同一事件集合，用于检查当前 state 与
 事件事实一致。
+
+## Match 编排与恢复边界
+
+`MatchOrchestrator` 为 boundary 中每个 actor 生成 participant observation，并要求 observation revision
+与 boundary 完全一致。participant driver 可以连接 ACP、人工输入或确定性脚本；它只通过 gateway
+提交当前 actor 的正式工具或 direct text。gateway 不认识游戏阶段，也不维护第二份规则状态。
+
+`single` 在一个 action 落定后提交；同一 participant 可以在新 boundary 中继续行动。`barrier` 并发
+驱动全部 actors，但 gateway 在动作集完整前不向 `GameMachine` 提交任何内容。seal 按 boundary actor
+顺序返回 batch，因此 participant 完成顺序不会改变事件顺序或向其他 actor 暴露部分选择。
+
+Session binding store 中与当前 decision ID 匹配的 pending action 会在 driver 启动前恢复并重新校验。
+新 action 的持久化 callback 在 gateway 返回 accepted receipt 前完成。编排失败会关闭内存 expectation，
+保留已持久 action，且不会提交不完整 barrier；成功提交后才清理所有参与者的 pending action。产品层
+决定如何把失败转换为暂停、重试或终止。
+
+## Prompt bundle 运行时
+
+Prompt runtime 从游戏提供的 manifest adapter 读取 bundle ID、显式 imports、template references、
+shared exports 与静态 audience。loader 拒绝路径逃逸、symlink、非 Nunjucks 文件、缺失模板、动态或
+未限定 import 和依赖环，并在 registry 使用前预编译全部模板。
+
+静态敏感度分为 public、participant、group 与 host。public 只能组合 public；participant 和 group
+只能组合自身类别或 public；host 可以组合全部内容。声明式 event matcher 使用 event type、属性路径
+相等或存在条件，并按 specificity 选择唯一呈现；同 specificity 重叠在安装时失败。semantic coverage
+以游戏定义的 kind 集合精确对比 Ruleset contributions 与 bundle claims，Core 不枚举 Role、Card、
+Phase 或工具名称。
+
+## 持久化 ports 与 SQLite adapter
+
+`MatchStore` 拥有 setup、Ruleset lock、运行状态、outcome 与连续确定性事件；
+`SessionBindingStore` 拥有逻辑 Session、bootstrap 和 pending accepted action；`DeliveryStore` 保存调用方
+定义的 delivery snapshot；`TrajectoryStore` 保存调用方 schema 约束的 Turn/Record entries。ports
+只规定状态所有权与恢复操作，不要求数据库实现。
+
+参考 SQLite adapter 为每类状态提供独立表、外键级联与事务写入，并在读取时调用游戏或调用方 codec。
+事件 append 验证 Match ID 与连续 sequence。迁移版本记录在 `arena_schema_migrations`，不占用宿主应用
+的 `PRAGMA user_version`；高于当前实现的 module version 会拒绝打开。该 adapter 可以独立使用，也可以
+与拥有自身 schema 的产品数据库并存。
 
 ## 可见性与 conformance
 
@@ -203,28 +270,36 @@ Prompt/message/tool 内容和 diagnostics 使用各自长度上限，截断位�
 
 ## 仓库门禁
 
-`run-gates` 按阶段并行执行 repository policies 与代码检查，在任一阶段失败时停止后续阶段。当前
-门禁覆盖：
+`@agent-arena/harness` 提供会停止在嵌套 repository/submodule 边界的文件发现和分阶段 gate runner。
+Core 的 `run-gates` 在同一 phase 并行执行检查，并在任一 gate 失败时停止后续 phase。当前门禁覆盖：
 
 - packages 与 examples 的允许依赖图及 workspace manifest 一致性；
+- 生产 packages 不 import 产品仓库，也不包含具体游戏术语或阶段 semantic；
 - source file 行数上限；
+- Markdown 链接、AGENTS/架构文档行数与当前态纯净性；
 - TypeScript build 与测试类型；
 - type-aware lint、格式和未使用依赖；
 - 产品源码逐文件 statements、branches、functions 与 lines 覆盖率；
 - 全 workspace 生产构建。
 
-文件发现会在嵌套 Git repository 或 submodule 标记处停止，使每个仓库独立拥有自己的文档、指令和
-代码门禁。
+`@agent-arena/testkit` 提供内存 store 与 scripted participant driver。脚本可以按 participant 排队动作、
+改变完成顺序或注入失败，用于验证密封 barrier 和 pending action 恢复，而不依赖真实 Agent、凭据或
+产品数据。
 
 ## 架构不变量
 
 - 游戏 registrar 拥有具体 semantic kinds 与 registries，Ruleset Core 拥有组合和锁定算法。
 - `ruleset`、`game-runtime`、`simulation` 与 `trajectory` 的内部 package 依赖只指向 `contracts`；
-  examples 是组合层。
+  `prompt-runtime` 与 `storage-sqlite` 同样只指向 `contracts`；examples 是游戏组合层。
+- `match-runtime` 只组合 `contracts` 与 `game-runtime`，participant transport 与产品生命周期通过 ports
+  接入。
 - `acp-runtime` 只拥有协议、进程、Session 与 delivery 原语。
+- Prompt runtime 只拥有 bundle 安全、静态 audience 和声明式匹配，不拥有游戏事实或文案。
 - `trajectory` 只拥有单个 ACP Turn 内的 Record 语义和内容安全边界。
 - decision boundary 是 host 驱动游戏的唯一行动契约。
 - barrier action batch 按冻结 actor 顺序提交。
+- accepted action 在成功回执前持久化，部分 barrier 永不进入 `GameMachine`。
+- SQLite migration 使用 module-owned version，不占用宿主应用 schema version。
 - game state 由 initial state 与连续事件唯一重建。
 - observation 只包含其 observer audience 授权的事实。
 - simulation fixture 只来自确定性复跑、runner agreement 与显式批准。

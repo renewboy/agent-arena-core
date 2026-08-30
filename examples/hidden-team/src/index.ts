@@ -302,6 +302,9 @@ class HiddenTeamMachine implements GameMachine<HiddenTeamState, HiddenTeamOutcom
             toolName: this.state.stage === 'clue' ? 'submit_clue' : 'submit_guess',
             inputMode: this.state.stage === 'clue' ? 'text' : 'structured',
             schema: this.state.stage === 'clue' ? CluePayloadSchema : GuessPayloadSchema,
+            ...(this.state.stage === 'clue'
+              ? { textInput: (text: string) => CluePayloadSchema.parse({ text }) }
+              : {}),
             ...(this.state.stage === 'clue' ? { streamAudience: { kind: 'public' as const } } : {}),
           },
         ],
