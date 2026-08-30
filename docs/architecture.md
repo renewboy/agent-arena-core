@@ -12,6 +12,8 @@ game runtime 还是游戏模块拥有。精确字段和失败行为由各 packag
 - 游戏状态只通过按序事件归约，create 与 restore 使用同一 reducer；
 - Match host 通过统一 decision boundary 驱动单人行动或多人 barrier；
 - audience 在事件产生时声明，observation 从授权后的事件与状态构造；
+- 一个逻辑 ACP Session 可以由新进程按精确 Session ID 恢复；
+- Prompt delivery 在 acknowledgement 前保持显式 in-flight 或 uncertain 状态；
 - 规则组合算法不要求共享具体游戏的 state、action payload、event payload 或 outcome；
 - 通用抽象由两种控制流不同的 conformance games 共同验证。
 
@@ -21,6 +23,7 @@ game runtime 还是游戏模块拥有。精确字段和失败行为由各 packag
 
 ```mermaid
 flowchart TB
+    ACP["acp-runtime<br/>process、Session、delivery"]
     Contracts["contracts<br/>IDs、audience、信封、Ruleset lock"]
     Ruleset["ruleset<br/>plugin 编译、ownership、graph、query、resolution"]
     Runtime["game-runtime<br/>GameModule、decision、journal、deterministic"]
@@ -39,6 +42,7 @@ flowchart TB
     Card --> Ruleset
     Card --> Runtime
     Harness -.验证.-> Contracts
+    Harness -.验证.-> ACP
     Harness -.验证.-> Ruleset
     Harness -.验证.-> Runtime
     Harness -.验证.-> Simulation
@@ -48,6 +52,7 @@ flowchart TB
 
 | 组件                 | 拥有的职责                                                               | 主要产出                             |
 | -------------------- | ------------------------------------------------------------------------ | ------------------------------------ |
+| `acp-runtime`        | stdio 进程、协议协商、Session new/resume、permission、Prompt 与 delivery | 可恢复的 `AcpSession` 和送达台账     |
 | `contracts`          | branded IDs、Ruleset lock、observer/audience、action/event/decision 信封 | Zod schemas 与跨包类型               |
 | `ruleset`            | plugin 拓扑安装、配置解析、semantic ownership、锁定、组合图、query、结算 | `RulesetRuntime` 与领域 registrar    |
 | `game-runtime`       | decision action/batch 校验、事件 journal、GameModule 接口、确定性随机    | 可由 Match host 驱动的 `GameMachine` |
@@ -154,6 +159,28 @@ determinism 和 runner agreement 同时成立时，runner result 具备显式接
 exclusive create 写入 fixture。warnings 需要显式 acknowledgement；runner result 与 capture 不同
 时需要显式 `acceptCurrent`。既有 fixture 只接受相同 source fingerprint 与 reviewed result。
 
+## ACP Session 与 delivery
+
+`AgentProcess` 使用显式 command/args/env 和 workspace 启动 ACP stdio 进程。POSIX guardian 持有独立
+进程组并中继 stdin，在父进程退出、正常关闭或 grace period 超时时终止后代进程；Windows 直接持有
+子进程。stderr 只保留有界 tail，并通过 callback 交给调用方。
+
+`AcpSession.start` 建立 NDJSON connection、协商精确协议版本，并按调用参数执行 `session/new` 或
+`session/resume`。resume 使用调用方给定的 Session ID。model、reasoning effort 与 mode 只从 Agent
+声明的 config options 中选择；无法兑现的配置以 lifecycle error 失败。
+
+permission handler 对普通工具名和显式 MCP server/tool allowlist 做精确匹配。Provider 只提供不透明
+MCP approval 时，调用方需要同时开启兼容标记并提供非空 MCP allowlist。每次 permission request 与
+decision 可以通过 callbacks 进入上层诊断。
+
+一次 Session 同时最多有一个 active Prompt。message chunks 按协议顺序合并，调用方可以在结构化动作
+回执完成后终止剩余生成。timeout 或 cancel 未确认产生 `AcpDeliveryUncertainError`，并携带 connection
+是否仍可复用的判断；协议 close、connection close 与进程关闭均有有界路径。
+
+`DeliveryLedger` 保存 acknowledged sequence 与最多一个 active attempt。`begin` 从已确认 cursor 的
+下一 sequence 建立范围；完成后 acknowledge，传输不确定时 mark uncertain。调用方只能明确清理未
+发送 attempt，或在外部对账后 abandon uncertain 并推进 cursor。
+
 ## 仓库门禁
 
 `run-gates` 按阶段并行执行 repository policies 与代码检查，在任一阶段失败时停止后续阶段。当前
@@ -173,9 +200,11 @@ exclusive create 写入 fixture。warnings 需要显式 acknowledgement；runner
 
 - 游戏 registrar 拥有具体 semantic kinds 与 registries，Ruleset Core 拥有组合和锁定算法。
 - `ruleset`、`game-runtime` 与 `simulation` 只依赖 `contracts`；examples 是组合层。
+- `acp-runtime` 只拥有协议、进程、Session 与 delivery 原语。
 - decision boundary 是 host 驱动游戏的唯一行动契约。
 - barrier action batch 按冻结 actor 顺序提交。
 - game state 由 initial state 与连续事件唯一重建。
 - observation 只包含其 observer audience 授权的事实。
 - simulation fixture 只来自确定性复跑、runner agreement 与显式批准。
+- Session resume 保持调用方给定的逻辑 Session ID，进程关闭保持有界。
 - conformance examples 通过公开 package exports 组合运行时。

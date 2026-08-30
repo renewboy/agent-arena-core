@@ -1,6 +1,7 @@
 import { sourceFiles, text, localPath, failIfErrors } from './files.js'
 
 const roots = [
+  'packages/acp-runtime/src',
   'packages/contracts/src',
   'packages/ruleset/src',
   'packages/game-runtime/src',
@@ -10,6 +11,7 @@ const roots = [
 ] as const
 
 const allowedInternalDependencies: Readonly<Record<string, ReadonlySet<string>>> = {
+  'packages/acp-runtime': new Set(),
   'packages/contracts': new Set(),
   'packages/ruleset': new Set(['contracts']),
   'packages/game-runtime': new Set(['contracts']),

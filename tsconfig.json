@@ -1,6 +1,7 @@
 {
   "files": [],
   "references": [
+    { "path": "packages/acp-runtime" },
     { "path": "packages/contracts" },
     { "path": "packages/ruleset" },
     { "path": "packages/game-runtime" },

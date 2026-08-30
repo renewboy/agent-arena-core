@@ -5,6 +5,7 @@ Agent Arena Core 是面向多 Agent 回合制游戏的 Ruleset-first 基础框�
 
 ## Workspace
 
+- `@agent-arena/acp-runtime`：ACP 进程、Session、stream、permission 与 delivery ledger。
 - `@agent-arena/contracts`：跨包 IDs、Ruleset lock、audience、action、event 与 decision schemas。
 - `@agent-arena/ruleset`：RulePlugin 安装、semantic ownership、Ruleset 编译、组合图与 resolution
   agenda。
