@@ -141,6 +141,7 @@ for (const forbidden of ['AgentWolf', '原来', '替代旧', '相比上一版'])
 
 const workflow = await text(resolve(projectRoot, '.github/workflows/ci.yml'))
 for (const requiredText of [
+  'pnpm/action-setup@v6',
   'pnpm install --frozen-lockfile',
   'pnpm run check:static',
   'pnpm test:coverage:ci',
@@ -151,6 +152,9 @@ for (const requiredText of [
 }
 if (workflow.includes('continue-on-error: true')) {
   errors.push('CI workflow contains a non-blocking required gate')
+}
+if ([...workflow.matchAll(/pnpm\/action-setup@(\S+)/gu)].some((match) => match[1] !== 'v6')) {
+  errors.push('CI workflow uses a pnpm Action without the Node 24 runtime')
 }
 
 const hooks = await text(resolve(projectRoot, 'lefthook.yml'))
