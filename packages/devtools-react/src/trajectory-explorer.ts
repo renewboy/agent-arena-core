@@ -80,6 +80,8 @@ export interface TrajectoryExplorerState<
   readonly reload: () => void
 }
 
+export type TrajectoryInitialPageMode = 'single' | 'complete'
+
 export function useTrajectoryExplorer<
   Turn extends TrajectoryTurnBase,
   Record extends TrajectoryRecordBase,
@@ -90,10 +92,12 @@ export function useTrajectoryExplorer<
   resourceId,
   dataSource,
   initialOwner,
+  initialPageMode = 'single',
 }: {
   readonly resourceId: string | null
   readonly dataSource: TrajectoryDataSource<Turn, Record, Owner, Summary, Page>
   readonly initialOwner: (summary: Summary) => string | null
+  readonly initialPageMode?: TrajectoryInitialPageMode
 }): TrajectoryExplorerState<Turn, Record, Owner, Summary, Page> {
   const [summary, setSummary] = useState<Summary | null>(null)
   const [page, setPage] = useState<Page | null>(null)
@@ -107,6 +111,7 @@ export function useTrajectoryExplorer<
   const revision = useRef(0)
   const pendingSelection = useRef<string | null>(null)
   const summaryLoaded = summary !== null
+  const pageReady = page !== null
 
   useEffect(() => {
     if (!resourceId) {
@@ -147,12 +152,14 @@ export function useTrajectoryExplorer<
     setError(null)
     const load = async (): Promise<void> => {
       try {
-        const next = await dataSource.loadPage(
+        const next = await loadInitialTrajectoryPage({
           resourceId,
           ownerId,
-          pageBeforeTurn,
-          controller.signal,
-        )
+          beforeTurn: pageBeforeTurn,
+          mode: initialPageMode,
+          dataSource,
+          signal: controller.signal,
+        })
         if (controller.signal.aborted) return
         revision.current = Math.max(revision.current, next.revision)
         setPage(next)
@@ -168,10 +175,10 @@ export function useTrajectoryExplorer<
     }
     void load()
     return () => controller.abort()
-  }, [dataSource, ownerId, pageBeforeTurn, resourceId, summaryLoaded])
+  }, [dataSource, initialPageMode, ownerId, pageBeforeTurn, resourceId, summaryLoaded])
 
   useEffect(() => {
-    if (!resourceId || !summaryLoaded || !dataSource.subscribe) return undefined
+    if (!resourceId || !summaryLoaded || !pageReady || !dataSource.subscribe) return undefined
     return dataSource.subscribe(
       resourceId,
       revision.current,
@@ -200,7 +207,7 @@ export function useTrajectoryExplorer<
       },
       (cause) => setError(normalizeError(cause)),
     )
-  }, [dataSource, resourceId, summaryLoaded])
+  }, [dataSource, pageReady, resourceId, summaryLoaded])
 
   const selectOwner = useCallback((nextOwnerId: string) => {
     pendingSelection.current = null
@@ -240,12 +247,20 @@ export function useTrajectoryExplorer<
     }
   }, [dataSource, ownerId, page, resourceId])
 
-  const focus = useCallback((nextOwnerId: string, beforeTurn: number | null, id: string) => {
-    pendingSelection.current = id
-    setSelectedId(null)
-    setOwnerId(nextOwnerId)
-    setPageBeforeTurn(beforeTurn)
-  }, [])
+  const focus = useCallback(
+    (nextOwnerId: string, beforeTurn: number | null, id: string) => {
+      if (page?.ownerId === nextOwnerId) {
+        pendingSelection.current = null
+        setSelectedId(id)
+        return
+      }
+      pendingSelection.current = id
+      setSelectedId(null)
+      setOwnerId(nextOwnerId)
+      setPageBeforeTurn(initialPageMode === 'complete' ? null : beforeTurn)
+    },
+    [initialPageMode, page?.ownerId],
+  )
   const reload = useCallback(() => setReloadRevision((current) => current + 1), [])
 
   return {
@@ -273,6 +288,62 @@ export function mergeTrajectoryBy<Value>(
   const values = new Map(current.map((value) => [key(value), value]))
   for (const value of incoming) values.set(key(value), value)
   return [...values.values()]
+}
+
+export function mergeTrajectoryPages<
+  Turn extends TrajectoryTurnBase,
+  Record extends TrajectoryRecordBase,
+  Page extends TrajectoryPageLike<Turn, Record>,
+>(current: Page, incoming: Page): Page {
+  return {
+    ...current,
+    revision: Math.max(current.revision, incoming.revision),
+    turns: mergeTrajectoryBy(current.turns, incoming.turns, (turn) => turn.turnId),
+    records: mergeTrajectoryBy(current.records, incoming.records, (record) => record.recordId),
+    nextBeforeTurn: incoming.nextBeforeTurn,
+  } as Page
+}
+
+async function loadInitialTrajectoryPage<
+  Turn extends TrajectoryTurnBase,
+  Record extends TrajectoryRecordBase,
+  Owner extends TrajectoryOwnerLike,
+  Summary extends TrajectorySummaryLike<Turn, Owner>,
+  Page extends TrajectoryPageLike<Turn, Record>,
+>({
+  resourceId,
+  ownerId,
+  beforeTurn,
+  mode,
+  dataSource,
+  signal,
+}: {
+  readonly resourceId: string
+  readonly ownerId: string
+  readonly beforeTurn: number | null
+  readonly mode: TrajectoryInitialPageMode
+  readonly dataSource: TrajectoryDataSource<Turn, Record, Owner, Summary, Page>
+  readonly signal: AbortSignal
+}): Promise<Page> {
+  if (mode === 'single' || beforeTurn !== null) {
+    return dataSource.loadPage(resourceId, ownerId, beforeTurn, signal)
+  }
+  let complete = await dataSource.loadPage(resourceId, ownerId, null, signal)
+  let cursor = complete.nextBeforeTurn
+  let pageCount = 1
+  while (cursor !== null && !signal.aborted) {
+    const next = await dataSource.loadPage(resourceId, ownerId, cursor, signal)
+    complete = mergeTrajectoryPages(next, complete)
+    cursor = next.nextBeforeTurn
+    pageCount += 1
+  }
+  if (pageCount > 1 && !signal.aborted) {
+    complete = mergeTrajectoryPages(
+      complete,
+      await dataSource.loadPage(resourceId, ownerId, null, signal),
+    )
+  }
+  return { ...complete, nextBeforeTurn: null } as Page
 }
 
 function normalizeError(error: unknown): Error {

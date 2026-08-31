@@ -1,5 +1,7 @@
 import { assertRule } from './errors.js'
 
+export type DeterministicIndexResolver = (key: string, length: number) => number
+
 export function deterministicIndex(key: string, length: number): number {
   assertRule(length > 0, 'Deterministic selection requires at least one value')
   let hash = 0x811c_9dc5

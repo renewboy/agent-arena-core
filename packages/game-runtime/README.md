@@ -9,3 +9,7 @@
 
 `EventJournal` 为确定性游戏事件分配 Match 内 sequence 并立即归约状态。`SeededRandom` 与稳定选择
 函数为游戏初始化和规则结算提供可重放随机源。
+
+`deterministicIndex` 提供稳定的 key/length 选择；`DeterministicIndexResolver` 是可注入的同形契约，供
+游戏 adapter 在 capture/replay 时记录并恢复已经发生的选择。resolver 仍必须返回当前 length 范围内的
+index，具体 key 和记录格式由游戏拥有。

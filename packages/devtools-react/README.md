@@ -6,8 +6,10 @@
 ## Trajectory explorer
 
 `useTrajectoryExplorer` 通过 `TrajectoryDataSource` 加载 summary 与 owner page，合并 revision delta、分页
-历史记录、保存 query/selection，并在 resource 或 owner 变化时取消旧请求。Data source 负责产品 wire
-解析；hook 只处理 Core `TrajectoryTurnBase`、`TrajectoryRecordBase` 及 revision/ID 契约。
+历史记录、保存 query/selection，并在 resource 或 owner 变化时取消旧请求。`initialPageMode=complete`
+会先遍历 owner 全部历史页、刷新一次 head，再建立 delta subscription，避免分页期间丢失实时记录。
+Data source 负责产品 wire 解析；hook 只处理 Core `TrajectoryTurnBase`、`TrajectoryRecordBase` 及
+revision/ID 契约。
 
 `TrajectoryMinimap`、`TrajectoryLedger` 与 `TrajectoryInspector` 是无样式组件。Timeline group、record
 label/preview、时间格式、class names 和详情 renderer 由调用方提供。
