@@ -24,7 +24,7 @@ AgentWolf 的公开 check、coverage 与 E2E 命令先构建 workspace packages�
 启动应用。完整 check 只在入口执行一次 bootstrap，内部测试 phase 使用已经构建的 workspace。
 
 Linux coverage 排除 process-guardian 集成文件；macOS CI job 独立运行该文件。其他 static、coverage、
-build 与 browser jobs 保持阻断。两仓 main 要求 PR 和各自适用的 required checks。
+build 与 browser jobs 独立运行并保留失败状态。
 
 ## Alternatives considered
 
@@ -36,18 +36,18 @@ build 与 browser jobs 保持阻断。两仓 main 要求 PR 和各自适用的 r
 **让已知 Linux guardian 失败继续阻断全部 CI。** 这会遮蔽其他门禁结果；macOS job 保留实际进程树
 验证，Linux 行为由独立工作处理。
 
-**只依赖本地 hooks。** Hooks 可以被 `--no-verify` 绕过，远端 required checks 才是权威边界。
+**只依赖本地 hooks。** Hooks 不是 clean checkout 证据；GitHub Actions 独立执行同一组仓库检查。
 
 ## Consequences
 
 - Core 在 submodule 与独立 checkout 中使用仓库自有且一致的 formatter、linter 和 hygiene 配置。
 - Fresh install 后可以直接运行 Core gates；AgentWolf 不依赖预先存在或可能陈旧的 package dist。
-- Pre-push 提供本地快速失败，GitHub main 保护阻止绕过或红色 CI 进入主分支。
+- Pre-push 提供本地快速失败，GitHub Actions 验证 clean checkout。
 - Process guardian 的 macOS 集成覆盖继续保留；Linux 集成问题没有通过弱化实现或延长超时掩盖。
-- 新增仓库级配置或 required check 时，需要同步文档门禁和远端保护上下文。
+- 新增仓库级配置或 CI job 时，需要同步文档门禁和 workflow。
 
 ## Verification
 
 Core 在仓库外的无 dist 临时 checkout 中执行 frozen install、static、CI coverage 与 build。AgentWolf 在
 无 dist 临时 checkout 中执行 frozen install、static、CI coverage、build 与浏览器套件。Hook 配置通过
-lefthook 直接调用验证，CI workflow 通过 GitHub Actions 验证；远端 main 保护通过 GitHub API 回读。
+lefthook 直接调用验证，CI workflow 通过 GitHub Actions 验证。
