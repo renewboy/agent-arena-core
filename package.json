@@ -9,18 +9,23 @@
     "check:static": "tsx scripts/harness/run-gates.ts static",
     "check:architecture": "tsx scripts/harness/check-architecture.ts",
     "check:docs": "tsx scripts/harness/check-docs.ts",
+    "duplication": "jscpd packages examples scripts",
     "format": "oxfmt --write .",
     "format:check": "oxfmt --check .",
     "hygiene": "knip --reporter compact",
     "lint": "oxlint --type-aware --deny-warnings .",
     "test": "vitest run --config vitest.config.ts",
     "test:coverage": "vitest run --coverage --config vitest.config.ts",
+    "test:coverage:ci": "vitest run --coverage --config vitest.config.ts --exclude packages/acp-runtime/tests/process.test.ts",
+    "prepare": "node scripts/harness/install-hooks.mjs",
     "typecheck": "tsc -b --pretty false && tsc -p tsconfig.tests.json --pretty false"
   },
   "devDependencies": {
     "@types/node": "24.10.1",
     "@vitest/coverage-v8": "4.1.11",
+    "jscpd": "5.0.16",
     "knip": "6.32.2",
+    "lefthook": "2.1.10",
     "oxfmt": "0.32.0",
     "oxlint": "1.79.0",
     "oxlint-tsgolint": "7.0.2001",
@@ -36,6 +41,9 @@
     "onlyBuiltDependencies": [
       "better-sqlite3",
       "esbuild"
+    ],
+    "ignoredBuiltDependencies": [
+      "lefthook"
     ]
   }
 }

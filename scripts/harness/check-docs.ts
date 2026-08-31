@@ -1,5 +1,10 @@
 import { access } from 'node:fs/promises'
-import { dirname, resolve } from 'node:path'
+import { resolve } from 'node:path'
+import {
+  markdownLinkPolicy,
+  requiredFilesPolicy,
+  runRepositoryPolicies,
+} from '../../packages/harness/src/index.js'
 import {
   agentsParentReference,
   closestAncestorAgents,
@@ -26,6 +31,12 @@ const required = [
   'AGENTS.md',
   'README.md',
   'artifacts_rules.md',
+  '.github/workflows/ci.yml',
+  '.jscpd.json',
+  '.oxfmtrc.json',
+  '.oxlintrc.json',
+  'knip.json',
+  'lefthook.yml',
   'docs/AGENTS.md',
   'docs/architecture.md',
   '.agents/notes/AGENTS.md',
@@ -45,13 +56,12 @@ const required = [
 ]
 const errors: string[] = []
 
-for (const path of required) {
-  try {
-    await access(resolve(projectRoot, path))
-  } catch {
-    errors.push(`missing required document ${path}`)
-  }
-}
+await runRepositoryPolicies([
+  requiredFilesPolicy({ projectRoot, paths: required }),
+  markdownLinkPolicy({ projectRoot, roots: ['.'] }),
+]).catch((error: unknown) => {
+  errors.push(error instanceof Error ? error.message : String(error))
+})
 
 for (const retired of ['.agents/notes/index.md', 'docs/decisions', 'docs/plans']) {
   try {
@@ -108,21 +118,6 @@ for (const path of instructionFiles) {
   }
 }
 
-for (const path of markdownFiles) {
-  const content = await text(path)
-  for (const match of content.matchAll(/\[[^\]]+\]\(([^)]+)\)/g)) {
-    const target = match[1]!
-    if (/^(?:https?:|mailto:|#)/.test(target)) continue
-    const localTarget = target.split('#')[0]!
-    if (!localTarget) continue
-    try {
-      await access(resolve(dirname(path), localTarget))
-    } catch {
-      errors.push(`${localPath(path)} links to missing ${target}`)
-    }
-  }
-}
-
 const rootAgents = await text(rootAgentsPath)
 if (!rootAgents.includes('](artifacts_rules.md)')) {
   errors.push('AGENTS.md must link to artifacts_rules.md')
@@ -142,6 +137,40 @@ for (const forbidden of ['AgentWolf', '原来', '替代旧', '相比上一版'])
   if (architecture.includes(forbidden)) {
     errors.push(`docs/architecture.md contains non-current narrative ${forbidden}`)
   }
+}
+
+const workflow = await text(resolve(projectRoot, '.github/workflows/ci.yml'))
+for (const requiredText of [
+  'pnpm install --frozen-lockfile',
+  'pnpm run check:static',
+  'pnpm test:coverage:ci',
+  'Process guardian (macOS)',
+  'pnpm build',
+]) {
+  if (!workflow.includes(requiredText)) errors.push(`CI workflow is missing ${requiredText}`)
+}
+if (workflow.includes('continue-on-error: true')) {
+  errors.push('CI workflow contains a non-blocking required gate')
+}
+
+const hooks = await text(resolve(projectRoot, 'lefthook.yml'))
+for (const requiredText of [
+  'pre-commit:',
+  'pre-push:',
+  'git --no-pager diff --cached --check',
+  'run: pnpm check',
+]) {
+  if (!hooks.includes(requiredText)) errors.push(`lefthook.yml is missing ${requiredText}`)
+}
+const manifest = JSON.parse(await text(resolve(projectRoot, 'package.json'))) as {
+  readonly scripts?: Readonly<Record<string, string>>
+  readonly devDependencies?: Readonly<Record<string, string>>
+}
+if (manifest.scripts?.['prepare'] !== 'node scripts/harness/install-hooks.mjs') {
+  errors.push('package.json must install repository hooks during prepare')
+}
+if (!manifest.devDependencies?.['lefthook']) {
+  errors.push('package.json must declare lefthook')
 }
 
 failIfErrors(errors, 'docs')

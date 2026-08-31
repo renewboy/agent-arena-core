@@ -76,6 +76,14 @@ export function dependencyPolicy(options: {
             errors.push(`${owner}/package.json must depend on ${options.scope}/${dependency}`)
           }
         }
+        for (const dependency of Object.keys(manifest.dependencies ?? {}).filter((name) =>
+          name.startsWith(`${options.scope}/`),
+        )) {
+          const packageDependency = dependency.slice(options.scope.length + 1)
+          if (!config.allowedDependencies.has(packageDependency)) {
+            errors.push(`${owner}/package.json declares disallowed dependency ${dependency}`)
+          }
+        }
       }
       return errors
     },

@@ -1,0 +1,9 @@
+{
+  "threshold": 4,
+  "minLines": 12,
+  "minTokens": 80,
+  "mode": "strict",
+  "reporters": ["console", "threshold"],
+  "ignore": ["**/node_modules/**", "**/dist/**", "**/coverage/**", "**/tests/**", "**/*.d.ts"],
+  "format": ["typescript", "javascript"]
+}

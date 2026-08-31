@@ -1,4 +1,9 @@
-import { sourceFiles, text, localPath, failIfErrors } from './files.js'
+import { sourceFiles, text, localPath, failIfErrors, projectRoot } from './files.js'
+import {
+  dependencyPolicy,
+  fileLinePolicy,
+  runRepositoryPolicies,
+} from '../../packages/harness/src/index.js'
 
 const roots = [
   'packages/acp-runtime/src',
@@ -44,17 +49,35 @@ const files = await sourceFiles(roots, new Set(['.ts', '.tsx']))
 const errors: string[] = []
 const maxSourceFileLines = 600
 
+const owners = Object.fromEntries(
+  Object.entries(allowedInternalDependencies).map(([owner, allowedDependencies]) => [
+    owner,
+    {
+      sourceRoot: `${owner}/src`,
+      packageName: owner.startsWith('examples/')
+        ? `example-${owner.slice('examples/'.length)}`
+        : owner.slice('packages/'.length),
+      allowedDependencies,
+    },
+  ]),
+)
+
+await runRepositoryPolicies([
+  dependencyPolicy({ projectRoot, scope: '@agent-arena', owners }),
+  fileLinePolicy({
+    projectRoot,
+    roots,
+    extensions: new Set(['.ts', '.tsx']),
+    maximumLines: maxSourceFileLines,
+  }),
+]).catch((error: unknown) => {
+  errors.push(error instanceof Error ? error.message : String(error))
+})
+
 for (const path of files) {
   const relativePath = localPath(path)
   const content = await text(path)
-  const lines = content.split(/\r?\n/).length
-  if (lines > maxSourceFileLines) {
-    errors.push(
-      `${relativePath} has ${lines} lines; source files are limited to ${maxSourceFileLines}`,
-    )
-  }
-  const owner = sourceOwner(relativePath)
-  if (owner.startsWith('packages/')) {
+  if (relativePath.startsWith('packages/')) {
     if (/['"]@agentwolf\//.test(content)) {
       errors.push(`${relativePath} must not import AgentWolf product packages`)
     }
@@ -65,50 +88,6 @@ for (const path of files) {
       errors.push(`${relativePath} contains a product phase semantic`)
     }
   }
-  for (const match of content.matchAll(
-    /\b(?:import|export)\s+(?:type\s+)?(?:[^'";]*?\sfrom\s*)?['"](@agent-arena\/[^'"]+)['"]/g,
-  )) {
-    const imported = match[1]?.match(/^@agent-arena\/([^/]+)/)?.[1]
-    if (!imported || imported === packageName(owner)) continue
-    if (!allowedInternalDependencies[owner]?.has(imported)) {
-      const line = content.slice(0, match.index).split(/\r?\n/).length
-      errors.push(`${relativePath}:${line} cannot import @agent-arena/${imported}`)
-    }
-  }
-}
-
-for (const [owner, dependencies] of Object.entries(allowedInternalDependencies)) {
-  const manifest = JSON.parse(await text(`${owner}/package.json`)) as {
-    readonly name?: string
-    readonly dependencies?: Readonly<Record<string, string>>
-  }
-  const expectedName = `@agent-arena/${packageName(owner)}`
-  if (owner.startsWith('packages/') && manifest.name !== expectedName) {
-    errors.push(`${owner}/package.json must declare ${expectedName}`)
-  }
-  for (const dependency of dependencies) {
-    if (manifest.dependencies?.[`@agent-arena/${dependency}`] !== 'workspace:*') {
-      errors.push(`${owner}/package.json must depend on @agent-arena/${dependency} via workspace:*`)
-    }
-  }
-  for (const dependency of Object.keys(manifest.dependencies ?? {}).filter((name) =>
-    name.startsWith('@agent-arena/'),
-  )) {
-    const packageDependency = dependency.slice('@agent-arena/'.length)
-    if (!dependencies.has(packageDependency)) {
-      errors.push(`${owner}/package.json declares disallowed internal dependency ${dependency}`)
-    }
-  }
 }
 
 failIfErrors(errors, 'architecture')
-
-function sourceOwner(path: string): string {
-  const match = path.match(/^((?:packages|examples)\/[^/]+)\/src\//)
-  if (!match?.[1]) throw new Error(`Cannot determine source owner for ${path}`)
-  return match[1]
-}
-
-function packageName(owner: string): string {
-  return owner.slice(owner.indexOf('/') + 1)
-}

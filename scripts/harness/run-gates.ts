@@ -9,6 +9,7 @@ const codeGates: readonly RepositoryGate[] = [
   { label: 'lint', command: 'pnpm', args: ['run', 'lint'] },
   { label: 'format', command: 'pnpm', args: ['run', 'format:check'] },
   { label: 'hygiene', command: 'pnpm', args: ['run', 'hygiene'] },
+  { label: 'duplication', command: 'pnpm', args: ['run', 'duplication'] },
 ]
 
 const staticPhases = [repositoryGates, codeGates] as const

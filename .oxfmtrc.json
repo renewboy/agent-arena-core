@@ -1,0 +1,13 @@
+{
+  "printWidth": 100,
+  "singleQuote": true,
+  "semi": false,
+  "trailingComma": "all",
+  "ignorePatterns": [
+    "pnpm-lock.yaml",
+    "artifacts_rules.md",
+    "**/dist/**",
+    "**/coverage/**",
+    "**/node_modules/**"
+  ]
+}

@@ -144,7 +144,10 @@ describe('repository harness', () => {
     await writeFile(resolve(root, 'packages', 'two', 'src', 'bad.ts'), "import '@scope/one'\n")
     await writeFile(
       resolve(root, 'packages', 'one', 'package.json'),
-      JSON.stringify({ name: '@scope/wrong', dependencies: {} }),
+      JSON.stringify({
+        name: '@scope/wrong',
+        dependencies: { '@scope/three': 'workspace:*' },
+      }),
     )
     await writeFile(resolve(root, 'README.md'), '[Missing](docs/missing.md)\n')
     await expect(
@@ -160,7 +163,7 @@ describe('repository harness', () => {
         requiredFilesPolicy({ projectRoot: root, paths: ['missing.txt'] }),
       ]),
     ).rejects.toThrow(
-      /dependencies:.*cannot import.*file-lines:.*markdown-links:.*required-files:/s,
+      /dependencies:.*disallowed dependency.*cannot import.*file-lines:.*markdown-links:.*required-files:/s,
     )
   })
 })
