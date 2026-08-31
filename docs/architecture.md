@@ -19,9 +19,13 @@
 - ACP Turn 的 Prompt、stream、tool、permission、usage 与 diagnostics 在持久化前统一脱敏和截断；
 - 规则组合算法不要求共享具体游戏的 state、action payload、event payload 或 outcome；
 - Match、Session binding、delivery 与 trajectory 通过 ports 持久，SQLite 是参考 adapter；
+- live projection、observer 切换、追平重连与 presentation 使用注入 ports，不要求共享游戏 View 或
+  JSON wire；
+- React adapters 不携带 CSS、copy、icon、route 或游戏 renderer，开发者 UI 通过 trajectory/simulation
+  contracts 与产品 adapter 组合；
 - 两种控制流不同的 conformance games 验证 Ruleset、GameModule、Prompt、Match 编排、visibility、
-  transient failure、restart 与 simulation 双 runner；其他 packages 由各自的协议与持久化 self-tests
-  验证。
+  transient failure、restart、Web runtime 与 simulation 双 runner；其他 packages 由各自的协议、交互
+  与持久化 self-tests 验证。
 
 ## 组件与依赖方向
 
@@ -40,6 +44,9 @@ flowchart TB
     Simulation["simulation<br/>candidate、双 runner、fixture"]
     Storage["storage-sqlite<br/>ports、migration、restart"]
     Trajectory["trajectory<br/>Turn、Record、redaction"]
+    WebRuntime["web-runtime<br/>projection、presentation、local state"]
+    React["react<br/>hooks、browser ports、primitives"]
+    Devtools["devtools-react<br/>trajectory、simulation UI"]
     Testkit["testkit<br/>memory stores、scripted driver"]
     Hidden["hidden-team<br/>group privacy 与 barrier"]
     Card["reaction-card<br/>连续行动与响应窗口"]
@@ -53,14 +60,21 @@ flowchart TB
     Simulation --> Contracts
     Storage --> Contracts
     Trajectory --> Contracts
+    React --> WebRuntime
+    Devtools --> React
+    Devtools --> WebRuntime
+    Devtools --> Trajectory
+    Devtools --> Simulation
     Testkit --> Contracts
     Testkit --> Match
     Hidden --> Contracts
     Hidden --> Ruleset
     Hidden --> Runtime
+    Hidden --> WebRuntime
     Card --> Contracts
     Card --> Ruleset
     Card --> Runtime
+    Card --> WebRuntime
     Harness -.验证.-> Contracts
     Harness -.验证.-> ACP
     Harness -.验证.-> Ruleset
@@ -71,6 +85,9 @@ flowchart TB
     Harness -.验证.-> Storage
     Harness -.验证.-> Testkit
     Harness -.验证.-> Trajectory
+    Harness -.验证.-> WebRuntime
+    Harness -.验证.-> React
+    Harness -.验证.-> Devtools
     Harness -.验证.-> Hidden
     Harness -.验证.-> Card
 ```
@@ -86,6 +103,9 @@ flowchart TB
 | `simulation`         | candidate 读取、runner 复跑、差异与敏感内容检查、fixture 批准            | reviewed deterministic corpus        |
 | `storage-sqlite`     | store ports 的 module-scoped migration、事务写入、解析与级联删除         | 可重启的参考 SQLite stores           |
 | `trajectory`         | ACP Turn 内 stream 合并、tool upsert、permission、usage、脱敏与截断      | 可持久化的 Turn/Record callbacks     |
+| `web-runtime`        | typed live state、observer pending、追平重连、presentation 与本地队列    | 无框架 controllers 与 server hub     |
+| `react`              | controller subscription、browser speech port、Select/Dialog 等交互       | 无样式 hooks 与 primitives           |
+| `devtools-react`     | trajectory revision/page 状态、虚拟浏览、simulation review workflow      | 可选的无样式开发者 UI                |
 | `testkit`            | 内存 stores、scripted participant、延迟与故障注入                        | 无产品数据的 runtime 测试驱动        |
 | conformance examples | 用独立领域状态组合规则、Prompt、编排、restart 与 simulation              | 可执行 full-stack 证明               |
 | `harness`            | repository 文件发现与 phase gate runner；policy 由仓库脚本提供           | 独立仓库验收结果                     |
@@ -220,6 +240,40 @@ ActionSpec、barrier 完整性、稳定 actor 顺序、轮换 actor 与终局 re
 
 `reaction-card` 使用确定性牌堆、participant-only 抽牌事件、连续主行动和嵌套响应 boundary，验证
 私有资源、seed 稳定性、响应窗口 restore、阻挡与伤害结算以及终局 replay。
+
+## Web projection 与 presentation
+
+Web 平台拆分为无框架 controller、React adapter 与游戏 renderer。Core 不定义统一 Match View；调用方先
+用自身 schema 解析 REST/WebSocket wire，再把消息归一化为 snapshot、transient、control 或 error。
+
+```mermaid
+flowchart LR
+    Projector["游戏 projector<br/>授权后的 View"]
+    Wire["产品 wire adapter<br/>schema parse"]
+    Live["LiveProjectionController<br/>load、channel、reconnect"]
+    Hooks["React hooks<br/>external store"]
+    Renderer["游戏 renderer<br/>copy、CSS、layout"]
+
+    Projector --> Wire --> Live --> Hooks --> Renderer
+```
+
+`LiveProjectionController` 并发建立 channel 与加载 snapshot。channel 已产生新投影时，较晚返回的旧 load
+结果不会覆盖它。observer 变化保留最后一份验证投影并标记 pending；renderer 可以让旧画面不可交互，
+server projector 仍是唯一授权边界。断线先从 load port 追平，再通过 scheduler port 有界退避；missing
+进入 unavailable，游戏声明的 settled projection 关闭连接。
+
+`LiveSubscriptionHub` 只管理 typed subscriber 集合，visibility 由 broadcast projector 决定。
+`PresentationBarrierCoordinator` 在 server 侧持有一个 controller 和一个 pending item；只接受精确 key
+的完成或跳过回执，observer 失去可见性、controller 断线或 runtime close 都会释放 pending。
+
+`PresentationPlaybackController` 在 client 侧合并 stream unit 与 committed item，使用调用方提供的
+sequence、actor、text、segment 和 `PlaybackPort`。手动播放不参与 barrier；自动播放不支持、失败或
+显式跳过时返回 skipped。`FollowLatestController` 与 `SequencedCueQueue` 只拥有交互状态，DOM 滚动、
+动画和 effect renderer 属于产品。
+
+`@agent-arena/react` 通过 external-store hooks 订阅 controllers，并把 SpeechSynthesis 限定在显式
+browser port。`@agent-arena/devtools-react` 通过 data source ports 维护 trajectory summary/page/delta 与
+simulation review 状态；owner metadata、timeline group、audit、Session debug 和视觉组件由消费者注入。
 
 ## 仿真评审
 

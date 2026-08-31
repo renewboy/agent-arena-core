@@ -30,6 +30,9 @@ Agent Arena Core 是 TypeScript workspace，为事件驱动、回合/阶段制�
 - `packages/prompt-runtime`：安全 bundle loader、静态 imports、audience 与 semantic coverage。
 - `packages/storage-sqlite`：通用 store ports 的参考 SQLite adapter。
 - `packages/trajectory`：ACP Turn/Record 合并、脱敏、截断与持久化 callbacks。
+- `packages/web-runtime`：live projection、subscription、presentation、follow-latest 与 cue 状态机。
+- `packages/react`：runtime hooks、browser ports 与无样式交互 primitives。
+- `packages/devtools-react`：trajectory explorer 与 simulation review React 组件。
 - `packages/simulation`：candidate、双 runner、review、approve 与 fixture workflow。
 - `packages/harness`：文件发现、repository policies 与分阶段 gate runner。
 - `packages/testkit`：内存 stores、scripted participant driver 与 failure drivers。
@@ -38,10 +41,12 @@ Agent Arena Core 是 TypeScript workspace，为事件驱动、回合/阶段制�
 
 ## Package 依赖方向
 
-- `contracts`、`acp-runtime` 与 `harness` 不依赖其他 Core package。
+- `contracts`、`acp-runtime`、`harness` 与 `web-runtime` 不依赖其他 Core package。
 - `ruleset`、`game-runtime`、`prompt-runtime`、`simulation`、`storage-sqlite` 与 `trajectory`
   只依赖 `contracts`。
 - `match-runtime` 只依赖 `contracts` 与 `game-runtime`；`testkit` 只服务测试。
+- `react` 只依赖 `web-runtime`；`devtools-react` 只依赖 `react`、`web-runtime`、`trajectory` 与
+  `simulation`。
 - examples 可以组合公开 packages，但生产 packages 不 import examples、产品仓库或产品语义。
 - 依赖、产品术语、文件长度和文档结构通过可执行门禁校验。
 

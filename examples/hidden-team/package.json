@@ -15,6 +15,7 @@
     "@agent-arena/ruleset": "workspace:*",
     "@agent-arena/simulation": "workspace:*",
     "@agent-arena/testkit": "workspace:*",
+    "@agent-arena/web-runtime": "workspace:*",
     "zod": "4.4.3"
   }
 }

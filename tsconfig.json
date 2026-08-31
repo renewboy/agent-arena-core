@@ -3,15 +3,18 @@
   "references": [
     { "path": "packages/acp-runtime" },
     { "path": "packages/contracts" },
+    { "path": "packages/devtools-react" },
     { "path": "packages/harness" },
     { "path": "packages/ruleset" },
     { "path": "packages/game-runtime" },
     { "path": "packages/prompt-runtime" },
+    { "path": "packages/react" },
     { "path": "packages/match-runtime" },
     { "path": "packages/simulation" },
     { "path": "packages/storage-sqlite" },
     { "path": "packages/testkit" },
     { "path": "packages/trajectory" },
+    { "path": "packages/web-runtime" },
     { "path": "examples/hidden-team" },
     { "path": "examples/reaction-card" }
   ]

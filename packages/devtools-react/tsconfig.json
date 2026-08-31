@@ -1,0 +1,18 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": "src",
+    "outDir": "dist",
+    "tsBuildInfoFile": "dist/.tsbuildinfo",
+    "lib": ["ES2023", "DOM", "DOM.Iterable"],
+    "jsx": "react-jsx",
+    "types": ["node", "react", "react-dom"]
+  },
+  "references": [
+    { "path": "../react" },
+    { "path": "../simulation" },
+    { "path": "../trajectory" },
+    { "path": "../web-runtime" }
+  ],
+  "include": ["src/**/*.ts", "src/**/*.tsx"]
+}

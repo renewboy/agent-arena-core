@@ -1,0 +1,27 @@
+{
+  "name": "@agent-arena/devtools-react",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -b",
+    "typecheck": "tsc -b --pretty false"
+  },
+  "dependencies": {
+    "@agent-arena/react": "workspace:*",
+    "@agent-arena/simulation": "workspace:*",
+    "@agent-arena/trajectory": "workspace:*",
+    "@agent-arena/web-runtime": "workspace:*",
+    "@tanstack/react-virtual": "3.14.10"
+  },
+  "peerDependencies": {
+    "react": ">=18.2 <20",
+    "react-dom": ">=18.2 <20"
+  }
+}

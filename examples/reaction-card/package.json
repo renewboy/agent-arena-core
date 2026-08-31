@@ -11,6 +11,7 @@
     "@agent-arena/contracts": "workspace:*",
     "@agent-arena/game-runtime": "workspace:*",
     "@agent-arena/ruleset": "workspace:*",
+    "@agent-arena/web-runtime": "workspace:*",
     "zod": "4.4.3"
   }
 }

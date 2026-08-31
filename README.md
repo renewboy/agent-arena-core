@@ -15,6 +15,9 @@ Agent Arena Core 是面向多 Agent 回合制游戏的 Ruleset-first 基础框�
 - `@agent-arena/simulation`：candidate、双 runner 评审、approved fixture 与 canonical helpers。
 - `@agent-arena/storage-sqlite`：Match、Session、delivery 与 trajectory ports 的参考 SQLite 实现。
 - `@agent-arena/trajectory`：ACP Turn/Record 合并、脱敏、截断与持久化 callbacks。
+- `@agent-arena/web-runtime`：无框架 live projection、subscription、presentation、滚动与 cue 状态机。
+- `@agent-arena/react`：runtime hooks、SpeechSynthesis adapter 与无样式交互 primitives。
+- `@agent-arena/devtools-react`：可选的 trajectory explorer 与 simulation review UI。
 - `@agent-arena/harness`：repository 文件发现与分阶段 gate runner。
 - `@agent-arena/testkit`：内存 stores 与 scripted participant driver。
 - `examples/hidden-team`：验证团队私有事实、文字行动与 barrier。

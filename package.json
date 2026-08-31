@@ -21,14 +21,22 @@
     "typecheck": "tsc -b --pretty false && tsc -p tsconfig.tests.json --pretty false"
   },
   "devDependencies": {
+    "@testing-library/jest-dom": "7.0.1",
+    "@testing-library/react": "16.3.3",
+    "@testing-library/user-event": "14.6.6",
     "@types/node": "24.10.1",
+    "@types/react": "19.2.14",
+    "@types/react-dom": "19.2.3",
     "@vitest/coverage-v8": "4.1.11",
     "jscpd": "5.0.16",
+    "jsdom": "30.0.1",
     "knip": "6.32.2",
     "lefthook": "2.1.10",
     "oxfmt": "0.32.0",
     "oxlint": "1.79.0",
     "oxlint-tsgolint": "7.0.2001",
+    "react": "19.2.8",
+    "react-dom": "19.2.8",
     "tsx": "4.23.12",
     "typescript": "7.0.2",
     "vitest": "4.1.11"

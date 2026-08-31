@@ -7,6 +7,9 @@ export default defineConfig({
       '@agent-arena/contracts': fileURLToPath(
         new URL('./packages/contracts/src/index.ts', import.meta.url),
       ),
+      '@agent-arena/devtools-react': fileURLToPath(
+        new URL('./packages/devtools-react/src/index.ts', import.meta.url),
+      ),
       '@agent-arena/harness': fileURLToPath(
         new URL('./packages/harness/src/index.ts', import.meta.url),
       ),
@@ -18,6 +21,9 @@ export default defineConfig({
       ),
       '@agent-arena/prompt-runtime': fileURLToPath(
         new URL('./packages/prompt-runtime/src/index.ts', import.meta.url),
+      ),
+      '@agent-arena/react': fileURLToPath(
+        new URL('./packages/react/src/index.ts', import.meta.url),
       ),
       '@agent-arena/match-runtime': fileURLToPath(
         new URL('./packages/match-runtime/src/index.ts', import.meta.url),
@@ -31,19 +37,22 @@ export default defineConfig({
       '@agent-arena/testkit': fileURLToPath(
         new URL('./packages/testkit/src/index.ts', import.meta.url),
       ),
+      '@agent-arena/web-runtime': fileURLToPath(
+        new URL('./packages/web-runtime/src/index.ts', import.meta.url),
+      ),
     },
   },
   test: {
     environment: 'node',
     include: [
-      'packages/*/tests/**/*.test.ts',
+      'packages/*/tests/**/*.test.{ts,tsx}',
       'examples/*/tests/**/*.test.ts',
       'scripts/**/*.test.ts',
     ],
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json-summary', 'html'],
-      include: ['packages/*/src/**/*.ts'],
+      include: ['packages/*/src/**/*.{ts,tsx}'],
       exclude: ['**/index.ts'],
       thresholds: {
         perFile: true,
