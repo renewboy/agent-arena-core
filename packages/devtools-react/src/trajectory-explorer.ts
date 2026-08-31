@@ -211,6 +211,7 @@ export function useTrajectoryExplorer<
 
   const selectOwner = useCallback((nextOwnerId: string) => {
     pendingSelection.current = null
+    setPage(null)
     setOwnerId(nextOwnerId)
     setPageBeforeTurn(null)
     setSelectedId(null)
@@ -256,6 +257,7 @@ export function useTrajectoryExplorer<
       }
       pendingSelection.current = id
       setSelectedId(null)
+      setPage(null)
       setOwnerId(nextOwnerId)
       setPageBeforeTurn(initialPageMode === 'complete' ? null : beforeTurn)
     },

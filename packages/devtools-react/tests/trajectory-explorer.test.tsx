@@ -194,6 +194,7 @@ describe('useTrajectoryExplorer', () => {
     expect(hook.result.current.page?.turns.map((value) => value.ordinal)).toEqual([1, 2, 3])
 
     act(() => hook.result.current.selectOwner('two'))
+    expect(hook.result.current.page).toBeNull()
     await waitFor(() => expect(hook.result.current.page?.ownerId).toBe('two'))
     act(() => hook.result.current.focus('two', 5, 'record-two-1'))
     await waitFor(() => expect(hook.result.current.selectedId).toBe('record-two-1'))
