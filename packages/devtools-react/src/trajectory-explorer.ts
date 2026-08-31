@@ -209,13 +209,17 @@ export function useTrajectoryExplorer<
     )
   }, [dataSource, pageReady, resourceId, summaryLoaded])
 
-  const selectOwner = useCallback((nextOwnerId: string) => {
-    pendingSelection.current = null
-    setPage(null)
-    setOwnerId(nextOwnerId)
-    setPageBeforeTurn(null)
-    setSelectedId(null)
-  }, [])
+  const selectOwner = useCallback(
+    (nextOwnerId: string) => {
+      pendingSelection.current = null
+      setSelectedId(null)
+      if (page?.ownerId === nextOwnerId) return
+      setPage(null)
+      setOwnerId(nextOwnerId)
+      setPageBeforeTurn(null)
+    },
+    [page?.ownerId],
+  )
 
   const loadOlder = useCallback(async (): Promise<void> => {
     if (!resourceId || !page?.nextBeforeTurn || !ownerId) return
