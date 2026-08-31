@@ -105,6 +105,75 @@ describe('trajectory components', () => {
     expect(select).toHaveBeenCalledWith('record-one-2')
   })
 
+  it('sorts ledger records and lets collapse-all hide a previously selected group', async () => {
+    const page = {
+      revision: 2,
+      ownerId: 'one',
+      turns: [turn(2, 'one', 'b'), turn(1, 'one', 'a')],
+      records: [record(2, 'one'), record(1, 'one')],
+      nextBeforeTurn: null,
+    }
+    const labels = {
+      search: 'Search',
+      loadOlder: 'Older',
+      collapseAll: 'Collapse',
+      expandAll: 'Expand',
+      groupCount: (count: number) => `${count} records`,
+    }
+    const view = render(
+      <TrajectoryLedger
+        adapter={adapter}
+        followLatest={false}
+        labels={labels}
+        loading={false}
+        page={page}
+        query=""
+        selectedId={null}
+        onLoadOlder={vi.fn()}
+        onQuery={vi.fn()}
+        onSelect={vi.fn()}
+      />,
+    )
+    const records = screen
+      .getAllByRole('button')
+      .filter((button) => button.textContent?.includes('text '))
+    expect(records.map((button) => button.textContent)).toEqual([
+      expect.stringContaining('#1'),
+      expect.stringContaining('#2'),
+    ])
+
+    await userEvent.click(screen.getByRole('button', { name: /Group a/u }))
+    view.rerender(
+      <TrajectoryLedger
+        adapter={adapter}
+        followLatest={false}
+        labels={labels}
+        loading={false}
+        page={page}
+        query=""
+        selectedId="record-one-1"
+        onLoadOlder={vi.fn()}
+        onQuery={vi.fn()}
+        onSelect={vi.fn()}
+      />,
+    )
+    expect(screen.getByRole('button', { name: /Group a/u })).toHaveAttribute(
+      'aria-expanded',
+      'true',
+    )
+
+    await userEvent.click(screen.getByRole('button', { name: 'Collapse' }))
+    expect(screen.getByRole('button', { name: /Group a/u })).toHaveAttribute(
+      'aria-expanded',
+      'false',
+    )
+    expect(screen.getByRole('button', { name: /Group b/u })).toHaveAttribute(
+      'aria-expanded',
+      'false',
+    )
+    expect(screen.queryByRole('button', { name: /text 1/u })).toBeNull()
+  })
+
   it('searches, collapses, selects, pages, follows, and restores owner scroll', async () => {
     const user = userEvent.setup()
     const select = vi.fn()

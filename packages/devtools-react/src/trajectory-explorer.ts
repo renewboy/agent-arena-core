@@ -8,7 +8,7 @@ export interface TrajectoryOwnerLike {
 }
 
 export interface TrajectorySummaryLike<
-  Turn extends TrajectoryTurnBase,
+  Turn extends TrajectoryTurnBase & { readonly ordinal: number },
   Owner extends TrajectoryOwnerLike,
 > {
   readonly revision: number
@@ -17,8 +17,8 @@ export interface TrajectorySummaryLike<
 }
 
 export interface TrajectoryPageLike<
-  Turn extends TrajectoryTurnBase,
-  Record extends TrajectoryRecordBase,
+  Turn extends TrajectoryTurnBase & { readonly ordinal: number },
+  Record extends TrajectoryRecordBase & { readonly ordinal: number },
 > {
   readonly revision: number
   readonly ownerId: string
@@ -28,8 +28,8 @@ export interface TrajectoryPageLike<
 }
 
 export interface TrajectoryDeltaLike<
-  Turn extends TrajectoryTurnBase,
-  Record extends TrajectoryRecordBase,
+  Turn extends TrajectoryTurnBase & { readonly ordinal: number },
+  Record extends TrajectoryRecordBase & { readonly ordinal: number },
 > {
   readonly revision: number
   readonly turns: readonly Turn[]
@@ -37,8 +37,8 @@ export interface TrajectoryDeltaLike<
 }
 
 export interface TrajectoryDataSource<
-  Turn extends TrajectoryTurnBase,
-  Record extends TrajectoryRecordBase,
+  Turn extends TrajectoryTurnBase & { readonly ordinal: number },
+  Record extends TrajectoryRecordBase & { readonly ordinal: number },
   Owner extends TrajectoryOwnerLike,
   Summary extends TrajectorySummaryLike<Turn, Owner>,
   Page extends TrajectoryPageLike<Turn, Record>,
@@ -59,8 +59,8 @@ export interface TrajectoryDataSource<
 }
 
 export interface TrajectoryExplorerState<
-  Turn extends TrajectoryTurnBase,
-  Record extends TrajectoryRecordBase,
+  Turn extends TrajectoryTurnBase & { readonly ordinal: number },
+  Record extends TrajectoryRecordBase & { readonly ordinal: number },
   Owner extends TrajectoryOwnerLike,
   Summary extends TrajectorySummaryLike<Turn, Owner>,
   Page extends TrajectoryPageLike<Turn, Record>,
@@ -83,8 +83,8 @@ export interface TrajectoryExplorerState<
 export type TrajectoryInitialPageMode = 'single' | 'complete'
 
 export function useTrajectoryExplorer<
-  Turn extends TrajectoryTurnBase,
-  Record extends TrajectoryRecordBase,
+  Turn extends TrajectoryTurnBase & { readonly ordinal: number },
+  Record extends TrajectoryRecordBase & { readonly ordinal: number },
   Owner extends TrajectoryOwnerLike,
   Summary extends TrajectorySummaryLike<Turn, Owner>,
   Page extends TrajectoryPageLike<Turn, Record>,
@@ -200,14 +200,47 @@ export function useTrajectoryExplorer<
           return {
             ...current,
             revision: delta.revision,
-            turns: mergeTrajectoryBy(current.turns, turns, (turn) => turn.turnId),
-            records: mergeTrajectoryBy(current.records, records, (record) => record.recordId),
+            turns: mergeTrajectoryByOrdinal(current.turns, turns, (turn) => turn.turnId),
+            records: mergeTrajectoryByOrdinal(
+              current.records,
+              records,
+              (record) => record.recordId,
+            ),
           } as Page
         })
       },
       (cause) => setError(normalizeError(cause)),
     )
   }, [dataSource, pageReady, resourceId, summaryLoaded])
+
+  useEffect(() => {
+    if (!page) return
+    setSummary((current) => {
+      if (!current) return current
+      const owners = current.owners.map((owner) => {
+        if (owner.ownerId !== page.ownerId) return owner
+        const turnCount =
+          initialPageMode === 'complete'
+            ? page.turns.length
+            : Math.max(owner.turnCount, page.turns.length)
+        const recordCount =
+          initialPageMode === 'complete'
+            ? page.records.length
+            : Math.max(owner.recordCount, page.records.length)
+        return turnCount === owner.turnCount && recordCount === owner.recordCount
+          ? owner
+          : ({ ...owner, turnCount, recordCount } as Owner)
+      })
+      const nextRevision = Math.max(current.revision, page.revision)
+      if (
+        owners.every((owner, index) => owner === current.owners[index]) &&
+        nextRevision === current.revision
+      ) {
+        return current
+      }
+      return { ...current, revision: nextRevision, owners } as Summary
+    })
+  }, [initialPageMode, page])
 
   const selectOwner = useCallback(
     (nextOwnerId: string) => {
@@ -237,8 +270,8 @@ export function useTrajectoryExplorer<
           ? ({
               ...current,
               revision: Math.max(current.revision, older.revision),
-              turns: mergeTrajectoryBy(older.turns, current.turns, (turn) => turn.turnId),
-              records: mergeTrajectoryBy(
+              turns: mergeTrajectoryByOrdinal(older.turns, current.turns, (turn) => turn.turnId),
+              records: mergeTrajectoryByOrdinal(
                 older.records,
                 current.records,
                 (record) => record.recordId,
@@ -297,22 +330,26 @@ export function mergeTrajectoryBy<Value>(
 }
 
 export function mergeTrajectoryPages<
-  Turn extends TrajectoryTurnBase,
-  Record extends TrajectoryRecordBase,
+  Turn extends TrajectoryTurnBase & { readonly ordinal: number },
+  Record extends TrajectoryRecordBase & { readonly ordinal: number },
   Page extends TrajectoryPageLike<Turn, Record>,
 >(current: Page, incoming: Page): Page {
   return {
     ...current,
     revision: Math.max(current.revision, incoming.revision),
-    turns: mergeTrajectoryBy(current.turns, incoming.turns, (turn) => turn.turnId),
-    records: mergeTrajectoryBy(current.records, incoming.records, (record) => record.recordId),
+    turns: mergeTrajectoryByOrdinal(current.turns, incoming.turns, (turn) => turn.turnId),
+    records: mergeTrajectoryByOrdinal(
+      current.records,
+      incoming.records,
+      (record) => record.recordId,
+    ),
     nextBeforeTurn: incoming.nextBeforeTurn,
   } as Page
 }
 
 async function loadInitialTrajectoryPage<
-  Turn extends TrajectoryTurnBase,
-  Record extends TrajectoryRecordBase,
+  Turn extends TrajectoryTurnBase & { readonly ordinal: number },
+  Record extends TrajectoryRecordBase & { readonly ordinal: number },
   Owner extends TrajectoryOwnerLike,
   Summary extends TrajectorySummaryLike<Turn, Owner>,
   Page extends TrajectoryPageLike<Turn, Record>,
@@ -336,20 +373,28 @@ async function loadInitialTrajectoryPage<
   }
   let complete = await dataSource.loadPage(resourceId, ownerId, null, signal)
   let cursor = complete.nextBeforeTurn
-  let pageCount = 1
   while (cursor !== null && !signal.aborted) {
     const next = await dataSource.loadPage(resourceId, ownerId, cursor, signal)
     complete = mergeTrajectoryPages(next, complete)
     cursor = next.nextBeforeTurn
-    pageCount += 1
   }
-  if (pageCount > 1 && !signal.aborted) {
+  if (!signal.aborted) {
     complete = mergeTrajectoryPages(
       complete,
       await dataSource.loadPage(resourceId, ownerId, null, signal),
     )
   }
   return { ...complete, nextBeforeTurn: null } as Page
+}
+
+function mergeTrajectoryByOrdinal<Value extends { readonly ordinal: number }>(
+  current: readonly Value[],
+  incoming: readonly Value[],
+  key: (value: Value) => string,
+): Value[] {
+  return mergeTrajectoryBy(current, incoming, key).sort(
+    (left, right) => left.ordinal - right.ordinal,
+  )
 }
 
 function normalizeError(error: unknown): Error {

@@ -129,12 +129,18 @@ export function TrajectoryLedger<
   const previousOwner = useRef<string | null>(null)
   const scrollByOwner = useRef(new Map<string, number>())
   const centeredSelection = useRef<string | null>(null)
+  const expandedSelection = useRef<string | null>(null)
   const [collapsedGroups, setCollapsedGroups] = useState<ReadonlySet<string>>(new Set())
   const followController = useMemo(() => new FollowLatestController(), [])
   useFollowLatest(followController)
+  const selectedRecord = page.records.find((record) => record.recordId === selectedId) ?? null
+  const selectedTurn = selectedRecord
+    ? (page.turns.find((turn) => turn.turnId === selectedRecord.turnId) ?? null)
+    : null
+  const selectedGroupId = selectedTurn ? adapter.group(selectedTurn).id : null
   const rows = useMemo(
-    () => buildRows(page, query, collapsedGroups, selectedId, adapter),
-    [adapter, collapsedGroups, page, query, selectedId],
+    () => buildRows(page, query, collapsedGroups, adapter),
+    [adapter, collapsedGroups, page, query],
   )
   const groupIds = useMemo(
     () => [...new Set(page.turns.map((turn) => adapter.group(turn).id))],
@@ -155,6 +161,22 @@ export function TrajectoryLedger<
   useLayoutEffect(() => {
     if (virtualRef.current) virtualRef.current.style.height = `${totalSize}px`
   }, [totalSize])
+
+  useLayoutEffect(() => {
+    if (!selectedId) {
+      expandedSelection.current = null
+      return
+    }
+    if (expandedSelection.current === selectedId) return
+    expandedSelection.current = selectedId
+    if (!selectedGroupId) return
+    setCollapsedGroups((current) => {
+      if (!current.has(selectedGroupId)) return current
+      const next = new Set(current)
+      next.delete(selectedGroupId)
+      return next
+    })
+  }, [selectedGroupId, selectedId])
 
   useLayoutEffect(() => {
     const ownerChanged = previousOwner.current !== page.ownerId
@@ -325,7 +347,6 @@ function buildRows<
   page: TrajectoryPageLike<Turn, Record>,
   query: string,
   collapsed: ReadonlySet<string>,
-  selectedId: string | null,
   adapter: TrajectoryPresentationAdapter<Turn, Record>,
 ): Array<LedgerRow<Turn, Record>> {
   const needle = query.trim().toLocaleLowerCase()
@@ -338,7 +359,9 @@ function buildRows<
   }
   return [...groups.values()].flatMap(({ group, turns }) => {
     const turnIds = new Set(turns.map((turn) => turn.turnId))
-    const groupRecords = page.records.filter((record) => turnIds.has(record.turnId))
+    const groupRecords = page.records
+      .filter((record) => turnIds.has(record.turnId))
+      .sort((left, right) => left.ordinal - right.ordinal)
     const records = groupRecords.filter((record) => {
       if (!needle) return true
       return `${record.title} ${record.text ?? ''} ${record.input ?? ''} ${record.output ?? ''}`
@@ -346,12 +369,7 @@ function buildRows<
         .includes(needle)
     })
     if (needle && records.length === 0) return []
-    const visible =
-      !needle &&
-      collapsed.has(group.id) &&
-      !records.some((record) => record.recordId === selectedId)
-        ? []
-        : records
+    const visible = !needle && collapsed.has(group.id) ? [] : records
     return [
       { kind: 'group' as const, key: `group:${group.id}`, group, recordCount: groupRecords.length },
       ...visible.map((record) => ({

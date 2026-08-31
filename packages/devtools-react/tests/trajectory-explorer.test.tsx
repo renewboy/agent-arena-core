@@ -114,7 +114,7 @@ describe('useTrajectoryExplorer', () => {
     expect(hook.result.current.selectedId).toBe('record-two-1')
   })
 
-  it('completes a one-page initial history without refreshing the head', async () => {
+  it('refreshes the head before subscribing even when the initial history has one page', async () => {
     const loadPage = vi.fn(async (_resource: string, ownerId: string) =>
       page(ownerId, 1, [turn(ownerId, 1)], [record(ownerId, 1)], null),
     )
@@ -136,7 +136,58 @@ describe('useTrajectoryExplorer', () => {
       }),
     )
     await waitFor(() => expect(hook.result.current.page?.ownerId).toBe('one'))
-    expect(loadPage).toHaveBeenCalledOnce()
+    expect(loadPage).toHaveBeenCalledTimes(2)
+  })
+
+  it('sorts complete pages and late deltas while synchronizing the selected owner counts', async () => {
+    let publish:
+      | ((delta: { revision: number; turns: Turn[]; records: RecordValue[] }) => void)
+      | null = null
+    const source: TrajectoryDataSource<Turn, RecordValue, Owner, Summary, Page> = {
+      loadSummary: async () => ({
+        revision: 1,
+        owners: [{ ownerId: 'one', turnCount: 1, recordCount: 1 }],
+        turns: [turn('one', 1)],
+      }),
+      loadPage: async () =>
+        page(
+          'one',
+          2,
+          [turn('one', 2), turn('one', 1)],
+          [record('one', 2), record('one', 1)],
+          null,
+        ),
+      subscribe: (_resource, _revision, onDelta) => {
+        publish = onDelta
+        return () => undefined
+      },
+    }
+    const ownerOne = (): string => 'one'
+    const hook = renderHook(() =>
+      useTrajectoryExplorer({
+        resourceId: 'match',
+        dataSource: source,
+        initialOwner: ownerOne,
+        initialPageMode: 'complete',
+      }),
+    )
+
+    await waitFor(() =>
+      expect(hook.result.current.page?.records.map((value) => value.ordinal)).toEqual([1, 2]),
+    )
+    await waitFor(() => expect(hook.result.current.summary?.owners[0]?.recordCount).toBe(2))
+
+    act(() =>
+      publish?.({
+        revision: 3,
+        turns: [turn('one', 4), turn('one', 3)],
+        records: [record('one', 4), record('one', 3)],
+      }),
+    )
+
+    expect(hook.result.current.page?.turns.map((value) => value.ordinal)).toEqual([1, 2, 3, 4])
+    expect(hook.result.current.page?.records.map((value) => value.ordinal)).toEqual([1, 2, 3, 4])
+    expect(hook.result.current.summary?.owners[0]).toMatchObject({ turnCount: 4, recordCount: 4 })
   })
 
   it('loads summary/page, merges deltas, switches owners, focuses, and pages backward', async () => {
