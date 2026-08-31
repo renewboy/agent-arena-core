@@ -20,6 +20,10 @@
     "@agent-arena/web-runtime": "workspace:*",
     "@tanstack/react-virtual": "3.14.10"
   },
+  "devDependencies": {
+    "@types/react": "19.2.14",
+    "@types/react-dom": "19.2.3"
+  },
   "peerDependencies": {
     "react": ">=18.2 <20",
     "react-dom": ">=18.2 <20"

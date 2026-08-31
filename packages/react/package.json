@@ -16,6 +16,10 @@
   "dependencies": {
     "@agent-arena/web-runtime": "workspace:*"
   },
+  "devDependencies": {
+    "@types/react": "19.2.14",
+    "@types/react-dom": "19.2.3"
+  },
   "peerDependencies": {
     "react": ">=18.2 <20",
     "react-dom": ">=18.2 <20"

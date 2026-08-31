@@ -149,6 +149,13 @@ importers:
       react-dom:
         specifier: '>=18.2 <20'
         version: 19.2.8(react@19.2.8)
+    devDependencies:
+      '@types/react':
+        specifier: 19.2.14
+        version: 19.2.14
+      '@types/react-dom':
+        specifier: 19.2.3
+        version: 19.2.3(@types/react@19.2.14)
 
   packages/game-runtime:
     dependencies:
@@ -201,6 +208,13 @@ importers:
       react-dom:
         specifier: '>=18.2 <20'
         version: 19.2.8(react@19.2.8)
+    devDependencies:
+      '@types/react':
+        specifier: 19.2.14
+        version: 19.2.14
+      '@types/react-dom':
+        specifier: 19.2.3
+        version: 19.2.3(@types/react@19.2.14)
 
   packages/ruleset:
     dependencies:
