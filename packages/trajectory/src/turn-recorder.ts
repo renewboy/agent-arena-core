@@ -60,6 +60,10 @@ export class TrajectoryTurnRecorder<
     this.#codecs = codecs
   }
 
+  public instructions(instructions: string): void {
+    this.#createRecord('instructions', 'instructions', { text: instructions })
+  }
+
   public prompt(prompt: string): void {
     this.#createRecord('prompt', 'prompt', { text: prompt })
   }

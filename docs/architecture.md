@@ -322,14 +322,15 @@ decision 可以通过 callbacks 进入上层诊断。
 callbacks。每次 mutation 都通过 callback 返回已保存对象，上层据此分配 revision、广播 delta 或接入
 其他持久实现。
 
-一个 Turn 内的 reasoning 与 message chunks 按 channel、message ID、tool boundary 和 stream
-generation 合并。tool call 与 update 按 tool-call ID upsert；terminal status 写入完成时间和 duration。
-usage 同时更新 Turn 并产生 usage Record。permission、accepted action、diagnostic、lifecycle、cancel、
-failure 与正常完成形成有序 Record 或 Turn 状态。
+一个 Turn 可以先记录生效的 instructions 与本次 Prompt。reasoning 与 message chunks 按 channel、
+message ID、tool boundary 和 stream generation 合并。tool call 与 update 按 tool-call ID upsert；
+terminal status 写入完成时间和 duration。usage 同时更新 Turn 并产生 usage Record。permission、
+accepted action、diagnostic、lifecycle、cancel、failure 与正常完成形成有序 Record 或 Turn 状态。
 
 结构化 input/output 在序列化前递归处理。authorization、credential、password、secret、token、API key
 与 private key 字段写为 `[REDACTED]`，`_meta` 被移除，循环对象写为稳定标记，数组和对象属性有界。
-Prompt/message/tool 内容和 diagnostics 使用各自长度上限，截断位置写入 `truncatedFields`。
+instructions、Prompt、message、tool 内容和 diagnostics 使用各自长度上限，截断位置写入
+`truncatedFields`。
 
 ## 仓库门禁
 

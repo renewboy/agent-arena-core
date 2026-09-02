@@ -13,6 +13,7 @@ describe('trajectory turn recorder', () => {
   it('merges streams, upserts tools, records usage, and redacts structured values', () => {
     const fixture = createFixture()
     const recorder = fixture.recorder
+    recorder.instructions('System instructions')
     recorder.prompt('Prompt text')
     for (const text of ['analysis', ' target', ' target']) {
       recorder.update({
@@ -78,6 +79,10 @@ describe('trajectory turn recorder', () => {
       stopReason: 'end_turn',
       usage: { used: 123, size: 4096 },
     })
+    expect(fixture.records.slice(0, 2)).toMatchObject([
+      { kind: 'instructions', title: 'instructions', text: 'System instructions' },
+      { kind: 'prompt', title: 'prompt', text: 'Prompt text' },
+    ])
     expect(fixture.records.filter((record) => record.kind === 'reasoning')).toHaveLength(1)
     expect(fixture.records.find((record) => record.kind === 'reasoning')?.text).toBe(
       'analysis target target',
